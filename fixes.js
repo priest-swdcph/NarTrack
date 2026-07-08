@@ -28,6 +28,52 @@
     return date.toLocaleDateString("th-TH");
   }
 
+  function readJsonCache(key, fallback = []) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (err) {
+      return fallback;
+    }
+  }
+
+  function writeJsonCache(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(Array.isArray(value) ? value : []));
+    } catch (err) {}
+  }
+
+  function getDrugMasterCache() {
+    return readJsonCache("drug_master_cache", []);
+  }
+
+  function setDrugMasterCache(list) {
+    writeJsonCache("drug_master_cache", list);
+    window.__drugMasterCache = Array.isArray(list) ? list : [];
+  }
+
+  function getShiftCountHistoryCache() {
+    return readJsonCache("shift_count_history_cache", []);
+  }
+
+  function setShiftCountHistoryCache(list) {
+    writeJsonCache("shift_count_history_cache", list);
+    window.__shiftCountHistoryCache = Array.isArray(list) ? list : [];
+  }
+
+  function setInlineLoadingState(targetId, show, message) {
+    const box = document.getElementById(targetId);
+    if (!box) return;
+    const text = box.querySelector("[data-loading-text]");
+    if (message && text) text.textContent = message;
+    box.classList.toggle("d-none", !show);
+  }
+
+  function renderEmptyRow(tbody, colSpan, message) {
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center text-muted py-4">${escapeHtml(message)}</td></tr>`;
+  }
+
   function populateDisbursementDropdown(stockList) {
     const select = document.getElementById("disburse-stock-select");
     if (!select) return;
@@ -48,6 +94,41 @@
     select.innerHTML = html;
     if (currentValue) {
       select.value = currentValue;
+    }
+  }
+
+  function populateReceiveDrugDropdown(masterList) {
+    const select = document.getElementById("drug-name-input");
+    if (!select) return;
+
+    const rows = Array.isArray(masterList) ? masterList : [];
+    if (rows.length === 0) {
+      select.innerHTML = '<option value="" selected disabled>ไม่พบรายการยาใน Drug Master</option>';
+      return;
+    }
+
+    let html = '<option value="" selected disabled>-- เลือกชื่อยา --</option>';
+    rows.forEach(item => {
+      const label = `${item.DrugName || "-"}${item.Strength ? ` (${item.Strength})` : ""}${item.Unit ? ` - ${item.Unit}` : ""}`;
+      html += `<option value="${escapeHtml(item.DrugID || "")}" data-name="${escapeHtml(item.DrugName || "")}" data-strength="${escapeHtml(item.Strength || "")}" data-unit="${escapeHtml(item.Unit || "")}">${escapeHtml(label)}</option>`;
+    });
+
+    select.innerHTML = html;
+  }
+
+  function syncReceiveDrugFieldsFromSelect() {
+    const select = document.getElementById("drug-name-input");
+    const strengthInput = document.getElementById("drug-strength-input");
+    const unitInput = document.getElementById("drug-unit-input");
+    if (!select) return;
+
+    const option = select.selectedOptions && select.selectedOptions[0];
+    if (!option || !option.dataset) return;
+    if (strengthInput && option.dataset.strength) {
+      strengthInput.value = option.dataset.strength;
+    }
+    if (unitInput && option.dataset.unit) {
+      unitInput.value = option.dataset.unit;
     }
   }
 
@@ -334,9 +415,19 @@
   window.initStockPage = async function () {
     showLoading(true);
     try {
-      const response = await GASApi.getDrugStock();
-      if (response.success) {
-        window.renderStockTable(response.data || []);
+      const [stockResult, masterResult] = await Promise.allSettled([
+        GASApi.getDrugStock(),
+        GASApi.getDrugMaster()
+      ]);
+      const stockResponse = stockResult.status === "fulfilled" ? stockResult.value : null;
+      const masterResponse = masterResult.status === "fulfilled" ? masterResult.value : null;
+      const masterRows = masterResponse && masterResponse.success ? (masterResponse.data || []) : getDrugMasterCache();
+      if (masterResponse && masterResponse.success) {
+        setDrugMasterCache(masterRows);
+      }
+      populateReceiveDrugDropdown(masterRows);
+      if (stockResponse && stockResponse.success) {
+        window.renderStockTable(stockResponse.data || []);
       } else {
         Swal.fire("เกิดข้อผิดพลาด", response.message || "ไม่สามารถดึงข้อมูลรับเข้าได้", "error");
       }
