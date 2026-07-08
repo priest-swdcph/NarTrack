@@ -86,19 +86,19 @@ document.addEventListener("DOMContentLoaded", async function() {
   // 3. เรียกใช้งานระบบตามหน้าจอ
   try {
     if (currentPage === "login.html") {
-      initLoginPage();
+      if (typeof window.initLoginPage === "function") window.initLoginPage();
     } else if (currentPage === "dashboard.html") {
-      await initDashboardPage();
+      if (typeof window.initDashboardPage === "function") await window.initDashboardPage();
     } else if (currentPage === "stock.html") {
-      await initStockPage();
+      if (typeof window.initStockPage === "function") await window.initStockPage();
     } else if (currentPage === "disbursement.html") {
-      await initDisbursementPage();
+      if (typeof window.initDisbursementPage === "function") await window.initDisbursementPage();
     } else if (currentPage === "shiftcount.html") {
-      await initShiftCountPage();
+      if (typeof window.initShiftCountPage === "function") await window.initShiftCountPage();
     } else if (currentPage === "report.html") {
-      await initReportPage();
+      if (typeof window.initReportPage === "function") await window.initReportPage();
     } else if (currentPage === "settings.html") {
-      await initSettingsPage();
+      if (typeof window.initSettingsPage === "function") await window.initSettingsPage();
     }
   } catch (error) {
     console.error("เกิดข้อผิดพลาดในการโหลดหน้าจอ:", error);
@@ -170,7 +170,7 @@ function initLoginPage() {
       
       Swal.fire({
         title: 'สร้างฐานข้อมูลใหม่?',
-        text: 'ระบบจะเข้าไปสร้างชีตที่จำเป็นใน Spreadsheet และตั้งค่าเริ่มต้นให้คุณโ�[...]',
+        text: 'ระบบจะเข้าไปสร้างชีตที่จำเป็นใน Spreadsheet และตั้งค่าเริ่มต้นให้คุณโ [...]',
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'ตกลง, ดำเนินการ',
