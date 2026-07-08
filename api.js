@@ -3,7 +3,7 @@
  * คลาสหรือฟังก์ชันจัดการติดต่อสื่อสารกับ Google Apps Script Web App API
  */
 
-const GASApi = {
+window.GASApi = window.GASApi || {
   // ดึงค่า URL ของ Web App จาก LocalStorage
   getApiUrl: function() {
     return localStorage.getItem("GAS_API_URL") || "";
@@ -133,5 +133,9 @@ const GASApi = {
   // 13. บันทึกหรืออัปเดตรายการยาหลัก
   updateDrugMaster: async function(data) {
     return await this.request("updateDrugMaster", "POST", data);
+  },
+
+  saveShiftCountBatch: async function(data) {
+    return await this.request("saveShiftCountBatch", "POST", data);
   }
 };
