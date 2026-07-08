@@ -74,8 +74,11 @@
           <div class="modal-body p-4">
             <div class="row g-3">
               <div class="col-12">
-                <label for="drug-name-input" class="form-label">ชื่อยาเสพติด</label>
-                <input type="text" class="form-control" id="drug-name-input" placeholder="เช่น Fentanyl, Pethidine" required>
+                <label for="drug-name-input" class="form-label">ชื่อยาเสพติด (เลือกจาก Drug Master)</label>
+                <select class="form-select" id="drug-name-input" required>
+                  <option value="" selected disabled>กำลังโหลดรายการยา...</option>
+                </select>
+                <div class="form-text">เลือกชื่อยาจากรายการกลาง ระบบจะช่วยกรอกความแรงและหน่วยให้อัตโนมัติ</div>
               </div>
               <div class="col-md-6">
                 <label for="drug-strength-input" class="form-label">ความแรง</label>
