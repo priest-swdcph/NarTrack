@@ -62,6 +62,9 @@
   }
 
   function setInlineLoadingState(targetId, show, message) {
+    if (targetId === "shift-batch-loading") {
+      window.__shiftCountLoadingState = !!show;
+    }
     const box = document.getElementById(targetId);
     if (!box) return;
     const text = box.querySelector("[data-loading-text]");
@@ -81,12 +84,12 @@
     const currentValue = select.value;
     const rows = Array.isArray(stockList) ? stockList.filter(item => parseFloat(item.QtyRemain || 0) > 0) : [];
 
-    let html = '<option value="" disabled selected>-- เลือกยาและล็อตจากคลัง --</option>';
+    let html = '<option value="" disabled selected>-- เน€เธฅเธทเธญเธเธขเธฒเนเธฅเธฐเธฅเนเธญเธ•เธเธฒเธเธเธฅเธฑเธ --</option>';
     if (rows.length === 0) {
-      html = '<option value="" disabled selected>-- ไม่พบรายการคงเหลือ --</option>';
+      html = '<option value="" disabled selected>-- เนเธกเนเธเธเธฃเธฒเธขเธเธฒเธฃเธเธเน€เธซเธฅเธทเธญ --</option>';
     } else {
       rows.forEach(item => {
-        const text = `${item.DrugName || "-"} | LOT ${item.LOT || "-"} | คงเหลือ ${item.QtyRemain ?? 0}`;
+        const text = `${item.DrugName || "-"} | LOT ${item.LOT || "-"} | เธเธเน€เธซเธฅเธทเธญ ${item.QtyRemain ?? 0}`;
         html += `<option value="${escapeHtml(item.StockID)}">${escapeHtml(text)}</option>`;
       });
     }
@@ -102,12 +105,13 @@
     if (!select) return;
 
     const rows = Array.isArray(masterList) ? masterList : [];
+    setDrugMasterCache(rows);
     if (rows.length === 0) {
-      select.innerHTML = '<option value="" selected disabled>ไม่พบรายการยาใน Drug Master</option>';
+      select.innerHTML = '<option value="" selected disabled>เนเธกเนเธเธเธฃเธฒเธขเธเธฒเธฃเธขเธฒเนเธ Drug Master</option>';
       return;
     }
 
-    let html = '<option value="" selected disabled>-- เลือกชื่อยา --</option>';
+    let html = '<option value="" selected disabled>-- เน€เธฅเธทเธญเธเธเธทเนเธญเธขเธฒ --</option>';
     rows.forEach(item => {
       const label = `${item.DrugName || "-"}${item.Strength ? ` (${item.Strength})` : ""}${item.Unit ? ` - ${item.Unit}` : ""}`;
       html += `<option value="${escapeHtml(item.DrugID || "")}" data-name="${escapeHtml(item.DrugName || "")}" data-strength="${escapeHtml(item.Strength || "")}" data-unit="${escapeHtml(item.Unit || "")}">${escapeHtml(label)}</option>`;
@@ -123,7 +127,11 @@
     if (!select) return;
 
     const option = select.selectedOptions && select.selectedOptions[0];
-    if (!option || !option.dataset) return;
+    if (strengthInput) strengthInput.value = "";
+    if (unitInput) unitInput.value = "";
+    if (!option || !option.dataset) {
+      return;
+    }
     if (strengthInput && option.dataset.strength) {
       strengthInput.value = option.dataset.strength;
     }
@@ -142,7 +150,7 @@
     }
 
     if (!Array.isArray(rows) || rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">ยังไม่มีประวัติการตัดจ่ายยา</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">เธขเธฑเธเนเธกเนเธกเธตเธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธ•เธฑเธ”เธเนเธฒเธขเธขเธฒ</td></tr>';
     } else {
       tbody.innerHTML = rows.map(item => `
         <tr>
@@ -177,8 +185,8 @@
           <a class="navbar-brand d-flex align-items-center gap-2" href="dashboard.html">
             <img src="icon-app.png" alt="App Icon" class="app-brand-logo">
             <span>
-              <span class="d-block">ระบบตรวจนับและตัดจ่ายยาเสพติด</span>
-              <small class="fw-normal opacity-75">หอสงฆ์อาพาธ โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</small>
+              <span class="d-block">เธฃเธฐเธเธเธ•เธฃเธงเธเธเธฑเธเนเธฅเธฐเธ•เธฑเธ”เธเนเธฒเธขเธขเธฒเน€เธชเธเธ•เธดเธ”</span>
+              <small class="fw-normal opacity-75">เธซเธญเธชเธเธเนเธญเธฒเธเธฒเธ เนเธฃเธเธเธขเธฒเธเธฒเธฅเธชเธกเน€เธ”เนเธเธเธฃเธฐเธขเธธเธเธฃเธฒเธเธชเธงเนเธฒเธเนเธ”เธเธ”เธดเธ</small>
             </span>
           </a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -186,16 +194,16 @@
           </button>
           <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0 nav-scroll-x">
-              <li class="nav-item"><a class="nav-link" id="nav-dashboard" href="dashboard.html"><i class="fas fa-chart-line me-1"></i> แดชบอร์ด</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-stock" href="stock.html"><i class="fas fa-boxes-stacked me-1"></i> รับเข้า</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-disbursement" href="disbursement.html"><i class="fas fa-file-medical me-1"></i> ตัดจ่าย</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-shiftcount" href="shiftcount.html"><i class="fas fa-clipboard-check me-1"></i> ตรวจนับ</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-report" href="report.html"><i class="fas fa-file-pdf me-1"></i> รายงาน</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-settings" href="settings.html"><i class="fas fa-sliders me-1"></i> ตั้งค่ารายการ</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-dashboard" href="dashboard.html"><i class="fas fa-chart-line me-1"></i> เนเธ”เธเธเธญเธฃเนเธ”</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-stock" href="stock.html"><i class="fas fa-boxes-stacked me-1"></i> เธฃเธฑเธเน€เธเนเธฒ</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-disbursement" href="disbursement.html"><i class="fas fa-file-medical me-1"></i> เธ•เธฑเธ”เธเนเธฒเธข</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-shiftcount" href="shiftcount.html"><i class="fas fa-clipboard-check me-1"></i> เธ•เธฃเธงเธเธเธฑเธ</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-report" href="report.html"><i class="fas fa-file-pdf me-1"></i> เธฃเธฒเธขเธเธฒเธ</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-settings" href="settings.html"><i class="fas fa-sliders me-1"></i> เธ•เธฑเนเธเธเนเธฒเธฃเธฒเธขเธเธฒเธฃ</a></li>
             </ul>
             <div class="d-flex align-items-center">
               <button class="btn btn-outline-light btn-sm" id="btn-config-api">
-                <i class="fas fa-cog me-1"></i> ตั้งค่า API
+                <i class="fas fa-cog me-1"></i> เธ•เธฑเนเธเธเนเธฒ API
               </button>
             </div>
           </div>
@@ -213,18 +221,18 @@
       btnConfigApi.dataset.bound = "1";
       btnConfigApi.addEventListener("click", async function () {
         const { value: url } = await Swal.fire({
-          title: 'ตั้งค่าการเชื่อมต่อ API',
-          text: 'กรอก Google Apps Script Web App API URL สำหรับระบบ',
+          title: 'เธ•เธฑเนเธเธเนเธฒเธเธฒเธฃเน€เธเธทเนเธญเธกเธ•เนเธญ API',
+          text: 'เธเธฃเธญเธ Google Apps Script Web App API URL เธชเธณเธซเธฃเธฑเธเธฃเธฐเธเธ',
           input: 'text',
           inputValue: GASApi.getApiUrl(),
           inputPlaceholder: 'https://script.google.com/macros/s/.../exec',
           showCancelButton: true,
-          confirmButtonText: 'บันทึก',
-          cancelButtonText: 'ยกเลิก'
+          confirmButtonText: 'เธเธฑเธเธ—เธถเธ',
+          cancelButtonText: 'เธขเธเน€เธฅเธดเธ'
         });
         if (url) {
           GASApi.setApiUrl(url);
-          showToast("บันทึก API URL เรียบร้อยแล้ว");
+          showToast("เธเธฑเธเธ—เธถเธ API URL เน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง");
           window.location.reload();
         }
       });
@@ -268,7 +276,7 @@
       }
     } catch (err) {
       console.error("Disbursement page error:", err);
-      Swal.fire("เกิดข้อผิดพลาด", err.toString(), "error");
+      Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", err.toString(), "error");
     } finally {
       showLoading(false);
     }
@@ -277,16 +285,16 @@
     const remainHint = document.getElementById("stock-remain-hint");
     const disburseUserInput = document.getElementById("disburse-user-input");
     if (disburseUserInput) {
-      disburseUserInput.value = disburseUserInput.value || "เจ้าหน้าที่เวร";
+      disburseUserInput.value = disburseUserInput.value || "เน€เธเนเธฒเธซเธเนเธฒเธ—เธตเนเน€เธงเธฃ";
     }
     if (stockSelect && remainHint && !stockSelect.dataset.bound) {
       stockSelect.dataset.bound = "1";
       stockSelect.addEventListener("change", function () {
         const selected = (window.__disbursementStockCache || []).find(item => item.StockID === this.value);
         if (selected) {
-          remainHint.innerText = `คงเหลือในระบบ: ${selected.QtyRemain} ${selected.Unit || "หน่วย"}`;
+          remainHint.innerText = `เธเธเน€เธซเธฅเธทเธญเนเธเธฃเธฐเธเธ: ${selected.QtyRemain} ${selected.Unit || "เธซเธเนเธงเธข"}`;
         } else {
-          remainHint.innerText = "คงเหลือในระบบ: -";
+          remainHint.innerText = "เธเธเน€เธซเธฅเธทเธญเนเธเธฃเธฐเธเธ: -";
         }
       });
     }
@@ -304,15 +312,15 @@
         const user = (document.getElementById("disburse-user-input")?.value || "").trim();
 
         if (!stockID) {
-          Swal.fire("แจ้งเตือน", "กรุณาเลือกรายการยาและล็อตก่อนตัดจ่าย", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธฃเธฒเธขเธเธฒเธฃเธขเธฒเนเธฅเธฐเธฅเนเธญเธ•เธเนเธญเธเธ•เธฑเธ”เธเนเธฒเธข", "warning");
           return;
         }
         if (!patientName || !hn || !user) {
-          Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลผู้ป่วยและผู้จ่ายยาให้ครบถ้วน", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเนเธญเธกเธนเธฅเธเธนเนเธเนเธงเธขเนเธฅเธฐเธเธนเนเธเนเธฒเธขเธขเธฒเนเธซเนเธเธฃเธเธ–เนเธงเธ", "warning");
           return;
         }
         if (!qty || qty <= 0) {
-          Swal.fire("แจ้งเตือน", "กรุณากรอกจำนวนที่ต้องการจ่ายให้ถูกต้อง", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเธณเธเธงเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธเนเธฒเธขเนเธซเนเธ–เธนเธเธ•เนเธญเธ", "warning");
           return;
         }
 
@@ -328,24 +336,24 @@
           showLoading(false);
 
           if (response.success) {
-            const drugName = response.drugName || "รายการที่เลือก";
+            const drugName = response.drugName || "เธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเน€เธฅเธทเธญเธ";
             const qtyRemain = response.qtyRemain ?? "-";
             Swal.fire({
               icon: "success",
-              title: "ตัดจ่ายสำเร็จ",
-              html: `ตัดจ่าย <b>${escapeHtml(drugName)}</b> จำนวน <b>${escapeHtml(qty)}</b> หน่วย<br>คงเหลือในระบบ: <b>${escapeHtml(qtyRemain)}</b> หน่วย`
+              title: "เธ•เธฑเธ”เธเนเธฒเธขเธชเธณเน€เธฃเนเธ",
+              html: `เธ•เธฑเธ”เธเนเธฒเธข <b>${escapeHtml(drugName)}</b> เธเธณเธเธงเธ <b>${escapeHtml(qty)}</b> เธซเธเนเธงเธข<br>เธเธเน€เธซเธฅเธทเธญเนเธเธฃเธฐเธเธ: <b>${escapeHtml(qtyRemain)}</b> เธซเธเนเธงเธข`
             }).then(() => {
               disburseForm.reset();
-              if (disburseUserInput) disburseUserInput.value = "เจ้าหน้าที่เวร";
-              if (remainHint) remainHint.innerText = "คงเหลือในระบบ: -";
+              if (disburseUserInput) disburseUserInput.value = "เน€เธเนเธฒเธซเธเนเธฒเธ—เธตเนเน€เธงเธฃ";
+              if (remainHint) remainHint.innerText = "เธเธเน€เธซเธฅเธทเธญเนเธเธฃเธฐเธเธ: -";
               window.initDisbursementPage();
             });
           } else {
-            Swal.fire("เกิดข้อผิดพลาด", response.message || "ไม่สามารถตัดจ่ายยาได้", "error");
+        window.renderStockTable([]);
           }
         } catch (error) {
           showLoading(false);
-          Swal.fire("เชื่อมต่อล้มเหลว", error.toString(), "error");
+          Swal.fire("เน€เธเธทเนเธญเธกเธ•เนเธญเธฅเนเธกเน€เธซเธฅเธง", error.toString(), "error");
         }
       });
     }
@@ -362,35 +370,38 @@
 
     const rows = Array.isArray(stockList) ? stockList : [];
     const today = new Date();
+    const masterRows = Array.isArray(window.__drugMasterCache) && window.__drugMasterCache.length ? window.__drugMasterCache : getDrugMasterCache();
+    const masterMap = new Map(masterRows.map(item => [String(item.DrugID || ""), item]));
 
     if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">ยังไม่มีข้อมูลรับเข้ายา</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">เธขเธฑเธเนเธกเนเธกเธตเธเนเธญเธกเธนเธฅเธฃเธฑเธเน€เธเนเธฒเธขเธฒ</td></tr>';
     } else {
       tbody.innerHTML = rows.map(item => {
         const remain = parseFloat(item.QtyRemain || 0);
         const expiryDate = item.ExpiryDate ? new Date(item.ExpiryDate) : null;
-        let statusBadge = '<span class="badge bg-secondary">ปกติ</span>';
+        let statusBadge = '<span class="badge bg-secondary">เธเธเธ•เธด</span>';
 
         if (remain <= 0) {
-          statusBadge = '<span class="badge bg-secondary">หมดแล้ว</span>';
+          statusBadge = '<span class="badge bg-secondary">เธซเธกเธ”เนเธฅเนเธง</span>';
         } else if (expiryDate && !Number.isNaN(expiryDate.getTime())) {
           const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
           if (diffDays < 0) {
-            statusBadge = '<span class="expiry-status-danger">หมดอายุ</span>';
+            statusBadge = '<span class="expiry-status-danger">เธซเธกเธ”เธญเธฒเธขเธธ</span>';
           } else if (diffDays <= 30) {
-            statusBadge = '<span class="expiry-status-warning">ใกล้หมดอายุ</span>';
+            statusBadge = '<span class="expiry-status-warning">เนเธเธฅเนเธซเธกเธ”เธญเธฒเธขเธธ</span>';
           } else {
-            statusBadge = '<span class="expiry-status-safe">ปกติ</span>';
+            statusBadge = '<span class="expiry-status-safe">เธเธเธ•เธด</span>';
           }
         }
 
         const fmtReceive = formatShortDate(item.ReceiveDate);
         const fmtExpiry = formatShortDate(item.ExpiryDate);
+        const displayDrugName = masterMap.get(String(item.DrugID || ""))?.DrugName || item.DrugName || "-";
 
         return `
           <tr>
             <td><span class="fw-semibold text-primary">${escapeHtml(item.StockID || "-")}</span></td>
-            <td>${escapeHtml(item.DrugName || "-")}</td>
+            <td>${escapeHtml(displayDrugName)}</td>
             <td><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
             <td>${escapeHtml(fmtExpiry)}</td>
             <td>${escapeHtml(item.QtyReceive ?? 0)}</td>
@@ -429,10 +440,10 @@
       if (stockResponse && stockResponse.success) {
         window.renderStockTable(stockResponse.data || []);
       } else {
-        Swal.fire("เกิดข้อผิดพลาด", response.message || "ไม่สามารถดึงข้อมูลรับเข้าได้", "error");
+        window.renderStockTable([]);
       }
     } catch (err) {
-      Swal.fire("เกิดข้อผิดพลาด", err.toString(), "error");
+      Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", err.toString(), "error");
     } finally {
       showLoading(false);
     }
@@ -443,22 +454,31 @@
       receiveDateInput.value = new Date().toISOString().slice(0, 10);
     }
     if (createdByInput) {
-      createdByInput.value = createdByInput.value || "เจ้าหน้าที่เวร";
+      createdByInput.value = createdByInput.value || "เน€เธเนเธฒเธซเธเนเธฒเธ—เธตเนเน€เธงเธฃ";
     }
+    const drugNameSelect = document.getElementById("drug-name-input");
+    if (drugNameSelect && !drugNameSelect.dataset.bound) {
+      drugNameSelect.dataset.bound = "1";
+      drugNameSelect.addEventListener("change", syncReceiveDrugFieldsFromSelect);
+    }
+    syncReceiveDrugFieldsFromSelect();
 
     const addStockForm = document.getElementById("add-stock-form");
     if (addStockForm && !addStockForm.dataset.bound) {
       addStockForm.dataset.bound = "1";
       addStockForm.addEventListener("submit", async function (e) {
         e.preventDefault();
-        const qty = parseFloat(document.getElementById("qty-receive-input").value);
+        const qty = parseFloat(document.getElementById('qty-receive-input').value);
+        const drugSelect = document.getElementById('drug-name-input');
+        const selectedOption = drugSelect?.selectedOptions?.[0];
         if (!qty || qty <= 0) {
-          Swal.fire("แจ้งเตือน", "กรุณากรอกจำนวนรับเข้าที่ถูกต้อง", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเธณเธเธงเธเธฃเธฑเธเน€เธเนเธฒเธ—เธตเนเธ–เธนเธเธ•เนเธญเธ", "warning");
           return;
         }
 
         const payload = {
-          DrugName: document.getElementById("drug-name-input").value.trim(),
+          DrugID: drugSelect?.value || '',
+          DrugName: selectedOption.dataset.name || '',
           Strength: document.getElementById("drug-strength-input").value.trim(),
           Unit: document.getElementById("drug-unit-input").value.trim(),
           LOT: document.getElementById("lot-input").value.trim(),
@@ -476,16 +496,16 @@
             bootstrap.Modal.getInstance(document.getElementById("addStockModal"))?.hide();
             addStockForm.reset();
             if (receiveDateInput) receiveDateInput.value = new Date().toISOString().slice(0, 10);
-            if (createdByInput) createdByInput.value = "เจ้าหน้าที่เวร";
-            Swal.fire("บันทึกสำเร็จ", res.message || "บันทึกข้อมูลรับเข้าเรียบร้อยแล้ว", "success").then(() => {
+            if (createdByInput) createdByInput.value = "เน€เธเนเธฒเธซเธเนเธฒเธ—เธตเนเน€เธงเธฃ";
+            Swal.fire("เธเธฑเธเธ—เธถเธเธชเธณเน€เธฃเนเธ", res.message || "เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธฃเธฑเธเน€เธเนเธฒเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง", "success").then(() => {
               window.initStockPage();
             });
           } else {
-            Swal.fire("บันทึกไม่สำเร็จ", res.message || "ไม่สามารถบันทึกข้อมูลรับเข้าได้", "error");
+            Swal.fire("เธเธฑเธเธ—เธถเธเนเธกเนเธชเธณเน€เธฃเนเธ", res.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธฃเธฑเธเน€เธเนเธฒเนเธ”เน", "error");
           }
         } catch (err) {
           showLoading(false);
-          Swal.fire("เชื่อมต่อล้มเหลว", err.toString(), "error");
+          Swal.fire("เน€เธเธทเนเธญเธกเธ•เนเธญเธฅเนเธกเน€เธซเธฅเธง", err.toString(), "error");
         }
       });
     }
@@ -496,7 +516,7 @@
     if (!select) return;
 
     const rows = Array.isArray(masterList) ? masterList : [];
-    let html = '<option value="" disabled selected>-- เลือกยา --</option>';
+    let html = '<option value="" disabled selected>-- เน€เธฅเธทเธญเธเธขเธฒ --</option>';
     rows.forEach(item => {
       const label = `${item.DrugName || "-"}${item.Strength ? ` (${item.Strength})` : ""}`;
       html += `<option value="${escapeHtml(item.DrugID)}">${escapeHtml(label)}</option>`;
@@ -505,7 +525,7 @@
   };
 
   window.renderShiftCountTable = function (historyList) {
-    const tbody = document.getElementById("shift-count-tbody");
+    const tbody = document.getElementById("shift-history-tbody");
     if (!tbody) return;
 
     if (window.__shiftCountTable && typeof window.__shiftCountTable.destroy === "function") {
@@ -515,13 +535,13 @@
 
     const rows = Array.isArray(historyList) ? historyList : [];
     if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">ยังไม่มีประวัติตรวจนับ</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">เธขเธฑเธเนเธกเนเธกเธตเธเธฃเธฐเธงเธฑเธ•เธดเธ•เธฃเธงเธเธเธฑเธ</td></tr>';
     } else {
       tbody.innerHTML = rows.map(item => {
-        const isCorrect = item.Result === "ถูกต้อง";
+        const isCorrect = item.Result === "เธ–เธนเธเธ•เนเธญเธ";
         const resultBadge = isCorrect
-          ? '<span class="badge bg-success-subtle text-success px-2 py-1"><i class="fas fa-check me-1"></i>ถูกต้อง</span>'
-          : '<span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="fas fa-circle-exclamation me-1"></i>ไม่ตรง</span>';
+          ? '<span class="badge bg-success-subtle text-success px-2 py-1"><i class="fas fa-check me-1"></i>เธ–เธนเธเธ•เนเธญเธ</span>'
+          : '<span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="fas fa-circle-exclamation me-1"></i>เนเธกเนเธ•เธฃเธ</span>';
         const fmtDate = formatShortDate(item.Date);
         return `
           <tr>
@@ -538,7 +558,7 @@
       }).join("");
     }
 
-    window.__shiftCountTable = $("#shift-count-table").DataTable({
+    window.__shiftCountTable = $("#shift-history-table").DataTable({
       language: {
         url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/th.json"
       },
@@ -565,7 +585,7 @@
         window.renderShiftCountTable([]);
       }
     } catch (err) {
-      Swal.fire("เกิดข้อผิดพลาด", err.toString(), "error");
+      Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", err.toString(), "error");
     } finally {
       showLoading(false);
     }
@@ -574,15 +594,15 @@
     const remainHint = document.getElementById("shift-remain-hint");
     const countUserInput = document.getElementById("count-user-input");
     if (countUserInput) {
-      countUserInput.value = countUserInput.value || "เจ้าหน้าที่เวร";
+      countUserInput.value = countUserInput.value || "เน€เธเนเธฒเธซเธเนเธฒเธ—เธตเนเน€เธงเธฃ";
     }
     if (drugSelect && remainHint && !drugSelect.dataset.bound) {
       drugSelect.dataset.bound = "1";
       drugSelect.addEventListener("change", function () {
         const selected = (window.__masterCache || []).find(item => item.DrugID === this.value);
         remainHint.innerText = selected
-          ? `ยอดเป้าหมาย Stock Ward: ${selected.StockWard || 0} ${selected.Unit || "หน่วย"}`
-          : "ยอดเป้าหมาย Stock Ward: -";
+          ? `เธขเธญเธ”เน€เธเนเธฒเธซเธกเธฒเธข Stock Ward: ${selected.StockWard || 0} ${selected.Unit || "เธซเธเนเธงเธข"}`
+          : "เธขเธญเธ”เน€เธเนเธฒเธซเธกเธฒเธข Stock Ward: -";
       });
     }
 
@@ -595,11 +615,11 @@
         const emptyAmp = parseFloat(document.getElementById("empty-amp-input").value);
 
         if (ampRemain < 0 || emptyAmp < 0 || Number.isNaN(ampRemain) || Number.isNaN(emptyAmp)) {
-          Swal.fire("แจ้งเตือน", "ยอดนับห้ามเป็นค่าติดลบ", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธขเธญเธ”เธเธฑเธเธซเนเธฒเธกเน€เธเนเธเธเนเธฒเธ•เธดเธ”เธฅเธ", "warning");
           return;
         }
         if (!drugSelect?.value) {
-          Swal.fire("แจ้งเตือน", "กรุณาเลือกชื่อยาที่ต้องการตรวจนับ", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธเธทเนเธญเธขเธฒเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธ•เธฃเธงเธเธเธฑเธ", "warning");
           return;
         }
 
@@ -614,23 +634,23 @@
           });
           showLoading(false);
           if (res.success) {
-            const isCorrect = res.result === "ถูกต้อง";
+            const isCorrect = res.result === "เธ–เธนเธเธ•เนเธญเธ";
             Swal.fire({
               icon: isCorrect ? "success" : "warning",
-              title: isCorrect ? "บันทึกการตรวจนับสำเร็จ" : "ผลตรวจนับไม่ตรงตามมาตรฐาน",
-              html: `ผลการตรวจนับ: <b>${escapeHtml(res.result || "-")}</b><br>ยอดมาตรฐาน: <b>${escapeHtml(res.actualTotal ?? 0)}</b> หน่วย<br>ยอดที่นับได้: <b>${escapeHtml(ampRemain + emptyAmp)}</b> หน่วย`
+              title: isCorrect ? "เธเธฑเธเธ—เธถเธเธเธฒเธฃเธ•เธฃเธงเธเธเธฑเธเธชเธณเน€เธฃเนเธ" : "เธเธฅเธ•เธฃเธงเธเธเธฑเธเนเธกเนเธ•เธฃเธเธ•เธฒเธกเธกเธฒเธ•เธฃเธเธฒเธ",
+              html: `เธเธฅเธเธฒเธฃเธ•เธฃเธงเธเธเธฑเธ: <b>${escapeHtml(res.result || "-")}</b><br>เธขเธญเธ”เธกเธฒเธ•เธฃเธเธฒเธ: <b>${escapeHtml(res.actualTotal ?? 0)}</b> เธซเธเนเธงเธข<br>เธขเธญเธ”เธ—เธตเนเธเธฑเธเนเธ”เน: <b>${escapeHtml(ampRemain + emptyAmp)}</b> เธซเธเนเธงเธข`
             }).then(() => {
               form.reset();
-              if (countUserInput) countUserInput.value = "เจ้าหน้าที่เวร";
-              if (remainHint) remainHint.innerText = "ยอดเป้าหมาย Stock Ward: -";
+              if (countUserInput) countUserInput.value = "เน€เธเนเธฒเธซเธเนเธฒเธ—เธตเนเน€เธงเธฃ";
+              if (remainHint) remainHint.innerText = "เธขเธญเธ”เน€เธเนเธฒเธซเธกเธฒเธข Stock Ward: -";
               window.initShiftCountPage();
             });
           } else {
-            Swal.fire("บันทึกไม่สำเร็จ", res.message || "ไม่สามารถบันทึกข้อมูลตรวจนับได้", "error");
+            Swal.fire("เธเธฑเธเธ—เธถเธเนเธกเนเธชเธณเน€เธฃเนเธ", res.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธ•เธฃเธงเธเธเธฑเธเนเธ”เน", "error");
           }
         } catch (err) {
           showLoading(false);
-          Swal.fire("เชื่อมต่อล้มเหลว", err.toString(), "error");
+          Swal.fire("เน€เธเธทเนเธญเธกเธ•เนเธญเธฅเนเธกเน€เธซเธฅเธง", err.toString(), "error");
         }
       });
     }
@@ -646,8 +666,9 @@
     }
 
     const rows = Array.isArray(drugList) ? drugList : [];
+    setDrugMasterCache(rows);
     if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีรายการยาในระบบ</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">เธขเธฑเธเนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเธขเธฒเนเธเธฃเธฐเธเธ</td></tr>';
     } else {
       tbody.innerHTML = rows.map(item => `
         <tr>
@@ -663,7 +684,7 @@
               data-strength="${escapeHtml(item.Strength || "")}"
               data-unit="${escapeHtml(item.Unit || "")}"
               data-stock="${escapeHtml(item.StockWard ?? 0)}">
-              <i class="fas fa-edit me-1"></i>แก้ไข
+              <i class="fas fa-edit me-1"></i>เนเธเนเนเธ
             </button>
           </td>
         </tr>
@@ -677,7 +698,7 @@
         document.getElementById("drug-strength-master").value = this.dataset.strength || "";
         document.getElementById("drug-unit-master").value = this.dataset.unit || "";
         document.getElementById("stock-ward-master").value = this.dataset.stock || 0;
-        document.getElementById("drugModalLabel").innerHTML = '<i class="fas fa-edit me-2"></i>แก้ไขข้อมูลยา';
+        document.getElementById("drugModalLabel").innerHTML = '<i class="fas fa-edit me-2"></i>เนเธเนเนเธเธเนเธญเธกเธนเธฅเธขเธฒ';
         new bootstrap.Modal(document.getElementById("drugModal")).show();
       });
     });
@@ -698,10 +719,10 @@
       if (res.success) {
         window.renderDrugTable(res.data || []);
       } else {
-        Swal.fire("เกิดข้อผิดพลาด", res.message || "ไม่สามารถดึงข้อมูลรายการยาได้", "error");
+        Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", res.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธ”เธถเธเธเนเธญเธกเธนเธฅเธฃเธฒเธขเธเธฒเธฃเธขเธฒเนเธ”เน", "error");
       }
     } catch (err) {
-      Swal.fire("เกิดข้อผิดพลาด", err.toString(), "error");
+      Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", err.toString(), "error");
     } finally {
       showLoading(false);
     }
@@ -713,7 +734,7 @@
         e.preventDefault();
         const stockWard = parseFloat(document.getElementById("stock-ward-master").value);
         if (Number.isNaN(stockWard) || stockWard < 0) {
-          Swal.fire("แจ้งเตือน", "กรุณากรอกจำนวน Stock Ward ให้ถูกต้อง", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเธณเธเธงเธ Stock Ward เนเธซเนเธ–เธนเธเธ•เนเธญเธ", "warning");
           return;
         }
 
@@ -731,15 +752,15 @@
             bootstrap.Modal.getInstance(document.getElementById("drugModal"))?.hide();
             form.reset();
             document.getElementById("drug-id-input").value = "";
-            Swal.fire("บันทึกสำเร็จ", res.message || "บันทึกข้อมูลเรียบร้อยแล้ว", "success").then(() => {
+            Swal.fire("เธเธฑเธเธ—เธถเธเธชเธณเน€เธฃเนเธ", res.message || "เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง", "success").then(() => {
               window.initSettingsPage();
             });
           } else {
-            Swal.fire("บันทึกไม่สำเร็จ", res.message || "ไม่สามารถบันทึกข้อมูลยาได้", "error");
+            Swal.fire("เธเธฑเธเธ—เธถเธเนเธกเนเธชเธณเน€เธฃเนเธ", res.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธขเธฒเนเธ”เน", "error");
           }
         } catch (err) {
           showLoading(false);
-          Swal.fire("เชื่อมต่อล้มเหลว", err.toString(), "error");
+          Swal.fire("เน€เธเธทเนเธญเธกเธ•เนเธญเธฅเนเธกเน€เธซเธฅเธง", err.toString(), "error");
         }
       });
     }
@@ -749,7 +770,7 @@
       addBtn.dataset.bound = "1";
       addBtn.addEventListener("click", function () {
         document.getElementById("drug-id-input").value = "";
-        document.getElementById("drugModalLabel").innerHTML = '<i class="fas fa-prescription-bottle-medical me-2"></i>เพิ่มข้อมูลยา';
+        document.getElementById("drugModalLabel").innerHTML = '<i class="fas fa-prescription-bottle-medical me-2"></i>เน€เธเธดเนเธกเธเนเธญเธกเธนเธฅเธขเธฒ';
         document.getElementById("drug-form").reset();
       });
     }
@@ -782,19 +803,19 @@
     if (!contentDiv || !titleEl || !subtitleEl) return;
 
     const [year, month] = String(yearMonth || "").split("-");
-    const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-    const monthLabel = year && month ? `${months[parseInt(month, 10) - 1] || "-"} พ.ศ. ${parseInt(year, 10) + 543}` : "-";
+    const months = ["เธกเธเธฃเธฒเธเธก", "เธเธธเธกเธ เธฒเธเธฑเธเธเน", "เธกเธตเธเธฒเธเธก", "เน€เธกเธฉเธฒเธขเธ", "เธเธคเธฉเธ เธฒเธเธก", "เธกเธดเธ–เธธเธเธฒเธขเธ", "เธเธฃเธเธเธฒเธเธก", "เธชเธดเธเธซเธฒเธเธก", "เธเธฑเธเธขเธฒเธขเธ", "เธ•เธธเธฅเธฒเธเธก", "เธเธคเธจเธเธดเธเธฒเธขเธ", "เธเธฑเธเธงเธฒเธเธก"];
+    const monthLabel = year && month ? `${months[parseInt(month, 10) - 1] || "-"} เธ.เธจ. ${parseInt(year, 10) + 543}` : "-";
 
-    titleEl.innerText = "รายงานสรุปการตรวจนับประจำเวร";
-    subtitleEl.innerText = `ประจำเดือน: ${monthLabel}`;
+    titleEl.innerText = "เธฃเธฒเธขเธเธฒเธเธชเธฃเธธเธเธเธฒเธฃเธ•เธฃเธงเธเธเธฑเธเธเธฃเธฐเธเธณเน€เธงเธฃ";
+    subtitleEl.innerText = `เธเธฃเธฐเธเธณเน€เธ”เธทเธญเธ: ${monthLabel}`;
 
     if (!Array.isArray(data) || data.length === 0) {
-      contentDiv.innerHTML = `<div class="text-center py-5 text-muted">ไม่พบข้อมูลการตรวจนับในเดือนที่เลือก</div>`;
+      contentDiv.innerHTML = `<div class="text-center py-5 text-muted">เนเธกเนเธเธเธเนเธญเธกเธนเธฅเธเธฒเธฃเธ•เธฃเธงเธเธเธฑเธเนเธเน€เธ”เธทเธญเธเธ—เธตเนเน€เธฅเธทเธญเธ</div>`;
       return;
     }
 
     const rowsHtml = data.map(item => {
-      const isCorrect = item.Result === "ถูกต้อง";
+      const isCorrect = item.Result === "เธ–เธนเธเธ•เนเธญเธ";
       return `
         <tr>
           <td class="text-center">${escapeHtml(formatShortDate(item.Date))}</td>
@@ -813,14 +834,14 @@
       <table class="table table-bordered table-sm w-100">
         <thead style="background-color: #cbd5e1;">
           <tr class="text-center">
-            <th>วันที่</th>
-            <th>เวร</th>
-            <th>ชื่อยา</th>
-            <th>แอมป์ดี</th>
-            <th>แอมป์เปล่า</th>
-            <th>ยอดรวม</th>
-            <th>ผลตรวจสอบ</th>
-            <th>ผู้บันทึก</th>
+            <th>เธงเธฑเธเธ—เธตเน</th>
+            <th>เน€เธงเธฃ</th>
+            <th>เธเธทเนเธญเธขเธฒ</th>
+            <th>เนเธญเธกเธเนเธ”เธต</th>
+            <th>เนเธญเธกเธเนเน€เธเธฅเนเธฒ</th>
+            <th>เธขเธญเธ”เธฃเธงเธก</th>
+            <th>เธเธฅเธ•เธฃเธงเธเธชเธญเธ</th>
+            <th>เธเธนเนเธเธฑเธเธ—เธถเธ</th>
           </tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
@@ -835,11 +856,11 @@
 
     if (!contentDiv || !titleEl || !subtitleEl) return;
 
-    titleEl.innerText = "รายงานการตัดจ่ายยา";
-    subtitleEl.innerText = `ชนิดยา: ${drugName || "-"}`;
+    titleEl.innerText = "เธฃเธฒเธขเธเธฒเธเธเธฒเธฃเธ•เธฑเธ”เธเนเธฒเธขเธขเธฒ";
+    subtitleEl.innerText = `เธเธเธดเธ”เธขเธฒ: ${drugName || "-"}`;
 
     if (!Array.isArray(data) || data.length === 0) {
-      contentDiv.innerHTML = `<div class="text-center py-5 text-muted">ไม่พบประวัติการตัดจ่ายสำหรับยาชนิดนี้</div>`;
+      contentDiv.innerHTML = `<div class="text-center py-5 text-muted">เนเธกเนเธเธเธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธ•เธฑเธ”เธเนเธฒเธขเธชเธณเธซเธฃเธฑเธเธขเธฒเธเธเธดเธ”เธเธตเน</div>`;
       return;
     }
 
@@ -860,14 +881,14 @@
       <table class="table table-bordered table-sm w-100">
         <thead style="background-color: #cbd5e1;">
           <tr class="text-center">
-            <th>วันที่จ่าย</th>
-            <th>ชื่อยา</th>
+            <th>เธงเธฑเธเธ—เธตเนเธเนเธฒเธข</th>
+            <th>เธเธทเนเธญเธขเธฒ</th>
             <th>LOT</th>
-            <th>ชื่อคนไข้</th>
+            <th>เธเธทเนเธญเธเธเนเธเน</th>
             <th>HN</th>
-            <th>จำนวนจ่าย</th>
-            <th>ผู้จ่าย</th>
-            <th>เวลาบันทึก</th>
+            <th>เธเธณเธเธงเธเธเนเธฒเธข</th>
+            <th>เธเธนเนเธเนเธฒเธข</th>
+            <th>เน€เธงเธฅเธฒเธเธฑเธเธ—เธถเธ</th>
           </tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
@@ -879,7 +900,7 @@
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const printDateEl = document.getElementById("pdf-print-date");
     if (printDateEl) {
-      printDateEl.innerText = "วันที่พิมพ์: " + new Date().toLocaleDateString("th-TH") + " " + new Date().toLocaleTimeString("th-TH");
+      printDateEl.innerText = "เธงเธฑเธเธ—เธตเนเธเธดเธกเธเน: " + new Date().toLocaleDateString("th-TH") + " " + new Date().toLocaleTimeString("th-TH");
     }
 
     try {
@@ -897,7 +918,7 @@
       shiftBtn.addEventListener("click", async function () {
         const monthVal = document.getElementById("report-month-input").value;
         if (!monthVal) {
-          Swal.fire("แจ้งเตือน", "กรุณาเลือกปีและเดือนสำหรับรายงานตรวจนับ", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธเธตเนเธฅเธฐเน€เธ”เธทเธญเธเธชเธณเธซเธฃเธฑเธเธฃเธฒเธขเธเธฒเธเธ•เธฃเธงเธเธเธฑเธ", "warning");
           return;
         }
         showLoading(true);
@@ -909,11 +930,11 @@
             document.getElementById("btn-download-pdf").classList.remove("disabled");
             window.__reportMode = "shift";
           } else {
-            Swal.fire("เกิดข้อผิดพลาด", res.message || "ไม่สามารถสร้างรายงานตรวจนับได้", "error");
+            Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", res.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธชเธฃเนเธฒเธเธฃเธฒเธขเธเธฒเธเธ•เธฃเธงเธเธเธฑเธเนเธ”เน", "error");
           }
         } catch (err) {
           showLoading(false);
-          Swal.fire("เชื่อมต่อล้มเหลว", err.toString(), "error");
+          Swal.fire("เน€เธเธทเนเธญเธกเธ•เนเธญเธฅเนเธกเน€เธซเธฅเธง", err.toString(), "error");
         }
       });
     }
@@ -928,7 +949,7 @@
         const drugNames = selectedOptions.map(opt => opt.text).join(", ");
         
         if (drugIDs.length === 0) {
-          Swal.fire("แจ้งเตือน", "กรุณาเลือกชนิดยาสำหรับรายงานการตัดจ่ายอย่างน้อย 1 รายการ", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธเธเธดเธ”เธขเธฒเธชเธณเธซเธฃเธฑเธเธฃเธฒเธขเธเธฒเธเธเธฒเธฃเธ•เธฑเธ”เธเนเธฒเธขเธญเธขเนเธฒเธเธเนเธญเธข 1 เธฃเธฒเธขเธเธฒเธฃ", "warning");
           return;
         }
         showLoading(true);
@@ -943,11 +964,11 @@
             document.getElementById("btn-download-pdf").classList.remove("disabled");
             window.__reportMode = "disburse";
           } else {
-            Swal.fire("เกิดข้อผิดพลาด", res.message || "ไม่สามารถสร้างรายงานตัดจ่ายได้", "error");
+            Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", res.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธชเธฃเนเธฒเธเธฃเธฒเธขเธเธฒเธเธ•เธฑเธ”เธเนเธฒเธขเนเธ”เน", "error");
           }
         } catch (err) {
           showLoading(false);
-          Swal.fire("เชื่อมต่อล้มเหลว", err.toString(), "error");
+          Swal.fire("เน€เธเธทเนเธญเธกเธ•เนเธญเธฅเนเธกเน€เธซเธฅเธง", err.toString(), "error");
         }
       });
     }
@@ -991,10 +1012,10 @@
             const mode = window.__reportMode || "report";
             pdf.save(`report-${mode}-${new Date().toISOString().slice(0, 10)}.pdf`);
             showLoading(false);
-            showToast("ดาวน์โหลด PDF สำเร็จ");
+            showToast("เธ”เธฒเธงเธเนเนเธซเธฅเธ” PDF เธชเธณเน€เธฃเนเธ");
           } catch (err) {
             showLoading(false);
-            Swal.fire("เกิดข้อผิดพลาด", err.toString(), "error");
+            Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", err.toString(), "error");
           }
         }, 300);
       });
@@ -1040,14 +1061,14 @@
 
   function getSelectedShiftValue() {
     const checked = document.querySelector('input[name="shift-select"]:checked');
-    return checked ? checked.value : "เช้า";
+    return checked ? checked.value : "เน€เธเนเธฒ";
   }
 
   function getShiftLabel(shift) {
     const labels = {
-      "เช้า": "เวรเช้า",
-      "บ่าย": "เวรบ่าย",
-      "ดึก": "เวรดึก"
+      "เน€เธเนเธฒ": "เน€เธงเธฃเน€เธเนเธฒ",
+      "เธเนเธฒเธข": "เน€เธงเธฃเธเนเธฒเธข",
+      "เธ”เธถเธ": "เน€เธงเธฃเธ”เธถเธ"
     };
     return labels[shift] || shift || "-";
   }
@@ -1057,7 +1078,7 @@
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       if (user && user.name) return user.name;
     } catch (err) {}
-    return "เจ้าหน้าที่เวร";
+    return "เน€เธเนเธฒเธซเธเนเธฒเธ—เธตเนเน€เธงเธฃ";
   }
 
   function isValidNumber(value) {
@@ -1087,19 +1108,19 @@
     tbody.closest("table")?.classList.add("stack-table-mobile");
     const list = Array.isArray(rows) ? rows : [];
     if (list.length === 0) {
-      tbody.innerHTML = emptyTableRowHtml(7, "ยังไม่มีประวัติการตัดจ่ายยา");
+      tbody.innerHTML = emptyTableRowHtml(7, "เธขเธฑเธเนเธกเนเธกเธตเธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธ•เธฑเธ”เธเนเธฒเธขเธขเธฒ");
       return;
     }
 
     tbody.innerHTML = list.map(item => `
       <tr>
-        <td data-label="รหัสรายการ"><span class="fw-semibold text-primary">${escapeHtml(item.DisburseID || item.DrugName || "-")}</span></td>
-        <td data-label="ชื่อยา" class="fw-semibold">${escapeHtml(item.DrugName || "-")}</td>
+        <td data-label="เธฃเธซเธฑเธชเธฃเธฒเธขเธเธฒเธฃ"><span class="fw-semibold text-primary">${escapeHtml(item.DisburseID || item.DrugName || "-")}</span></td>
+        <td data-label="เธเธทเนเธญเธขเธฒ" class="fw-semibold">${escapeHtml(item.DrugName || "-")}</td>
         <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
-        <td data-label="ชื่อผู้ป่วย">${escapeHtml(item.PatientName || "-")} <span class="text-muted">(${escapeHtml(item.HN || "-")})</span></td>
-        <td data-label="จำนวน" class="text-end fw-bold">${escapeHtml(item.Qty ?? 0)}</td>
-        <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>
-        <td data-label="เวลา">${formatThaiDateTime(item.Timestamp || item.Date)}</td>
+        <td data-label="เธเธทเนเธญเธเธนเนเธเนเธงเธข">${escapeHtml(item.PatientName || "-")} <span class="text-muted">(${escapeHtml(item.HN || "-")})</span></td>
+        <td data-label="เธเธณเธเธงเธ" class="text-end fw-bold">${escapeHtml(item.Qty ?? 0)}</td>
+        <td data-label="เธเธนเนเธเธฑเธเธ—เธถเธ">${escapeHtml(item.User || "-")}</td>
+        <td data-label="เน€เธงเธฅเธฒ">${formatThaiDateTime(item.Timestamp || item.Date)}</td>
       </tr>
     `).join("");
 
@@ -1122,39 +1143,39 @@
     const rows = Array.isArray(stockList) ? stockList : [];
     const today = new Date();
     if (rows.length === 0) {
-      tbody.innerHTML = emptyTableRowHtml(9, "ยังไม่มีข้อมูลรับเข้ายา");
+      tbody.innerHTML = emptyTableRowHtml(9, "เธขเธฑเธเนเธกเนเธกเธตเธเนเธญเธกเธนเธฅเธฃเธฑเธเน€เธเนเธฒเธขเธฒ");
       return;
     }
 
     tbody.innerHTML = rows.map(item => {
       const remain = parseFloat(item.QtyRemain || 0);
       const expiryDate = item.ExpiryDate ? new Date(item.ExpiryDate) : null;
-      let statusBadge = '<span class="badge bg-secondary">ปกติ</span>';
+      let statusBadge = '<span class="badge bg-secondary">เธเธเธ•เธด</span>';
 
       if (remain <= 0) {
-        statusBadge = '<span class="badge bg-secondary">หมดแล้ว</span>';
+        statusBadge = '<span class="badge bg-secondary">เธซเธกเธ”เนเธฅเนเธง</span>';
       } else if (expiryDate && !Number.isNaN(expiryDate.getTime())) {
         const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
         if (diffDays < 0) {
-          statusBadge = '<span class="expiry-status-danger">หมดอายุ</span>';
+          statusBadge = '<span class="expiry-status-danger">เธซเธกเธ”เธญเธฒเธขเธธ</span>';
         } else if (diffDays <= 30) {
-          statusBadge = '<span class="expiry-status-warning">ใกล้หมดอายุ</span>';
+          statusBadge = '<span class="expiry-status-warning">เนเธเธฅเนเธซเธกเธ”เธญเธฒเธขเธธ</span>';
         } else {
-          statusBadge = '<span class="expiry-status-safe">ปกติ</span>';
+          statusBadge = '<span class="expiry-status-safe">เธเธเธ•เธด</span>';
         }
       }
 
       return `
         <tr>
-          <td data-label="รหัสสต็อก"><span class="fw-semibold text-primary">${escapeHtml(item.StockID || "-")}</span></td>
-          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
+          <td data-label="เธฃเธซเธฑเธชเธชเธ•เนเธญเธ"><span class="fw-semibold text-primary">${escapeHtml(item.StockID || "-")}</span></td>
+          <td data-label="เธเธทเนเธญเธขเธฒ">${escapeHtml(item.DrugName || "-")}</td>
           <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
-          <td data-label="วันหมดอายุ">${escapeHtml(formatThaiDate(item.ExpiryDate))}</td>
-          <td data-label="รับเข้า">${escapeHtml(item.QtyReceive ?? 0)}</td>
-          <td data-label="คงเหลือ" class="fw-bold">${escapeHtml(item.QtyRemain ?? 0)}</td>
-          <td data-label="วันที่รับเข้า">${escapeHtml(formatThaiDate(item.ReceiveDate))}</td>
-          <td data-label="ผู้บันทึก">${escapeHtml(item.CreatedBy || "-")}</td>
-          <td data-label="สถานะ">${statusBadge}</td>
+          <td data-label="เธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธ">${escapeHtml(formatThaiDate(item.ExpiryDate))}</td>
+          <td data-label="เธฃเธฑเธเน€เธเนเธฒ">${escapeHtml(item.QtyReceive ?? 0)}</td>
+          <td data-label="เธเธเน€เธซเธฅเธทเธญ" class="fw-bold">${escapeHtml(item.QtyRemain ?? 0)}</td>
+          <td data-label="เธงเธฑเธเธ—เธตเนเธฃเธฑเธเน€เธเนเธฒ">${escapeHtml(formatThaiDate(item.ReceiveDate))}</td>
+          <td data-label="เธเธนเนเธเธฑเธเธ—เธถเธ">${escapeHtml(item.CreatedBy || "-")}</td>
+          <td data-label="เธชเธ–เธฒเธเธฐ">${statusBadge}</td>
         </tr>
       `;
     }).join("");
@@ -1176,25 +1197,25 @@
     tbody.closest("table")?.classList.add("stack-table-mobile");
     const rows = Array.isArray(drugList) ? drugList : [];
     if (rows.length === 0) {
-      tbody.innerHTML = emptyTableRowHtml(6, "ยังไม่มีรายการยาในระบบ");
+      tbody.innerHTML = emptyTableRowHtml(6, "เธขเธฑเธเนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเธขเธฒเนเธเธฃเธฐเธเธ");
       return;
     }
 
     tbody.innerHTML = rows.map(item => `
       <tr>
-        <td data-label="รหัสยา"><span class="fw-semibold text-primary">${escapeHtml(item.DrugID || "-")}</span></td>
-        <td data-label="ชื่อยา" class="fw-bold">${escapeHtml(item.DrugName || "-")}</td>
-        <td data-label="ความแรง">${escapeHtml(item.Strength || "-")}</td>
-        <td data-label="หน่วย"><span class="badge bg-secondary">${escapeHtml(item.Unit || "-")}</span></td>
+        <td data-label="เธฃเธซเธฑเธชเธขเธฒ"><span class="fw-semibold text-primary">${escapeHtml(item.DrugID || "-")}</span></td>
+        <td data-label="เธเธทเนเธญเธขเธฒ" class="fw-bold">${escapeHtml(item.DrugName || "-")}</td>
+        <td data-label="เธเธงเธฒเธกเนเธฃเธ">${escapeHtml(item.Strength || "-")}</td>
+        <td data-label="เธซเธเนเธงเธข"><span class="badge bg-secondary">${escapeHtml(item.Unit || "-")}</span></td>
         <td data-label="Stock Ward" class="text-center fw-bold" style="font-size:1.05rem; color:#10b981;">${escapeHtml(item.StockWard ?? 0)}</td>
-        <td data-label="จัดการ" class="text-center">
+        <td data-label="เธเธฑเธ”เธเธฒเธฃ" class="text-center">
           <button class="btn btn-warning btn-sm btn-edit-drug"
             data-id="${escapeHtml(item.DrugID || "")}"
             data-name="${escapeHtml(item.DrugName || "")}"
             data-strength="${escapeHtml(item.Strength || "")}"
             data-unit="${escapeHtml(item.Unit || "")}"
             data-stock="${escapeHtml(item.StockWard ?? 0)}">
-            <i class="fas fa-edit me-1"></i>แก้ไข
+            <i class="fas fa-edit me-1"></i>เนเธเนเนเธ
           </button>
         </td>
       </tr>
@@ -1207,7 +1228,7 @@
         document.getElementById("drug-strength-master").value = this.dataset.strength || "";
         document.getElementById("drug-unit-master").value = this.dataset.unit || "";
         document.getElementById("stock-ward-master").value = this.dataset.stock || 0;
-        document.getElementById("drugModalLabel").innerHTML = '<i class="fas fa-edit me-2"></i>แก้ไขข้อมูลยา';
+        document.getElementById("drugModalLabel").innerHTML = '<i class="fas fa-edit me-2"></i>เนเธเนเนเธเธเนเธญเธกเธนเธฅเธขเธฒ';
         new bootstrap.Modal(document.getElementById("drugModal")).show();
       });
     });
@@ -1235,7 +1256,7 @@
     const statusCell = row.querySelector(".count-status-cell");
     const actionBtn = row.querySelector(".row-save-btn");
     const target = parseFloat(row.dataset.target || "0");
-    const unit = row.dataset.unit || "หน่วย";
+    const unit = row.dataset.unit || "เธซเธเนเธงเธข";
     const ampValue = ampInput ? ampInput.value : "";
     const emptyValue = emptyInput ? emptyInput.value : "";
     const filled = isValidNumber(ampValue) && isValidNumber(emptyValue);
@@ -1250,8 +1271,8 @@
 
     if (statusCell) {
       statusCell.innerHTML = filled
-        ? '<span class="badge bg-success-subtle text-success px-2 py-1"><i class="fas fa-circle-check me-1"></i>● ตรวจแล้ว</span>'
-        : '<span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="fas fa-circle-xmark me-1"></i>● ยังไม่นับ</span>';
+        ? '<span class="badge bg-success-subtle text-success px-2 py-1"><i class="fas fa-circle-check me-1"></i>โ— เธ•เธฃเธงเธเนเธฅเนเธง</span>'
+        : '<span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="fas fa-circle-xmark me-1"></i>โ— เธขเธฑเธเนเธกเนเธเธฑเธ</span>';
     }
 
     if (totalCell) {
@@ -1262,19 +1283,19 @@
       if (!filled) {
         resultCell.innerHTML = '<span class="text-muted">-</span>';
       } else if (diff === 0) {
-        resultCell.innerHTML = '<span class="text-success fw-semibold">✓ ครบถ้วน</span>';
+        resultCell.innerHTML = '<span class="text-success fw-semibold">โ“ เธเธฃเธเธ–เนเธงเธ</span>';
       } else if (diff < 0) {
-        resultCell.innerHTML = `<span class="text-danger fw-semibold">✗ ยาขาด ${Math.abs(diff)} ${escapeHtml(unit)}</span>`;
+        resultCell.innerHTML = `<span class="text-danger fw-semibold">โ— เธขเธฒเธเธฒเธ” ${Math.abs(diff)} ${escapeHtml(unit)}</span>`;
       } else {
-        resultCell.innerHTML = `<span class="text-danger fw-semibold">✗ ยาเกิน ${diff} ${escapeHtml(unit)}</span>`;
+        resultCell.innerHTML = `<span class="text-danger fw-semibold">โ— เธขเธฒเน€เธเธดเธ ${diff} ${escapeHtml(unit)}</span>`;
       }
     }
 
     if (actionBtn) {
       actionBtn.disabled = !filled;
       actionBtn.innerHTML = row.dataset.saved === "1"
-        ? '<i class="fas fa-pen-to-square me-1"></i>แก้ไข'
-        : '<i class="fas fa-floppy-disk me-1"></i>บันทึก';
+        ? '<i class="fas fa-pen-to-square me-1"></i>เนเธเนเนเธ'
+        : '<i class="fas fa-floppy-disk me-1"></i>เธเธฑเธเธ—เธถเธ';
     }
 
     row.classList.remove("table-success", "table-danger", "table-warning");
@@ -1302,25 +1323,25 @@
     const alertBox = document.getElementById("shift-batch-alert");
     const submitBtn = document.getElementById("btn-save-batch");
 
-    if (summaryText) summaryText.textContent = `ตรวจสอบแล้ว ${completed} จาก ${total} รายการ`;
+    if (summaryText) summaryText.textContent = `เธ•เธฃเธงเธเธชเธญเธเนเธฅเนเธง ${completed} เธเธฒเธ ${total} เธฃเธฒเธขเธเธฒเธฃ`;
     if (summaryChecked) summaryChecked.textContent = String(completed);
     if (summaryPending) summaryPending.textContent = String(pending);
     if (summaryMismatch) summaryMismatch.textContent = String(mismatch);
     if (summaryReady) summaryReady.textContent = String(ready);
 
     let alertType = "info";
-    let alertMessage = "พร้อมตรวจนับต่อได้ทันที";
-    const disabled = total === 0 || pending > 0 || mismatch > 0;
+    let alertMessage = "เธเธฃเนเธญเธกเธ•เธฃเธงเธเธเธฑเธเธ•เนเธญเนเธ”เนเธ—เธฑเธเธ—เธต";
+    const disabled = total === 0 || pending > 0 || mismatch > 0 || window.__shiftCountLoadingState;
 
     if (pending > 0) {
       alertType = "warning";
-      alertMessage = `ยังมี ${pending} รายการที่ยังไม่นับครบ ระบบจะไม่อนุญาตให้ส่งยอดจนกว่าจะกรอกครบทุกแถว`;
+      alertMessage = `เธขเธฑเธเธกเธต ${pending} เธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธขเธฑเธเนเธกเนเธเธฑเธเธเธฃเธ เธฃเธฐเธเธเธเธฐเนเธกเนเธญเธเธธเธเธฒเธ•เนเธซเนเธชเนเธเธขเธญเธ”เธเธเธเธงเนเธฒเธเธฐเธเธฃเธญเธเธเธฃเธเธ—เธธเธเนเธ–เธง`;
     } else if (mismatch > 0) {
       alertType = "danger";
-      alertMessage = `พบ ${mismatch} รายการที่ผลรวมไม่ตรงกับยอดเป้าหมาย กรุณาตรวจทานก่อนส่งเวร`;
+      alertMessage = `เธเธ ${mismatch} เธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธเธฅเธฃเธงเธกเนเธกเนเธ•เธฃเธเธเธฑเธเธขเธญเธ”เน€เธเนเธฒเธซเธกเธฒเธข เธเธฃเธธเธ“เธฒเธ•เธฃเธงเธเธ—เธฒเธเธเนเธญเธเธชเนเธเน€เธงเธฃ`;
     } else if (total > 0) {
       alertType = "success";
-      alertMessage = "ครบทุกแถวและผลตรวจสอบตรงทั้งหมด สามารถบันทึกส่งตรวจเช็คยอดได้";
+      alertMessage = "เธเธฃเธเธ—เธธเธเนเธ–เธงเนเธฅเธฐเธเธฅเธ•เธฃเธงเธเธชเธญเธเธ•เธฃเธเธ—เธฑเนเธเธซเธกเธ” เธชเธฒเธกเธฒเธฃเธ–เธเธฑเธเธ—เธถเธเธชเนเธเธ•เธฃเธงเธเน€เธเนเธเธขเธญเธ”เนเธ”เน";
     }
 
     if (alertBox) {
@@ -1371,20 +1392,20 @@
       const response = await GASApi.saveShiftCountBatch(payload);
       showLoading(false);
       if (!response.success) {
-        Swal.fire("บันทึกไม่สำเร็จ", response.message || "ไม่สามารถบันทึกข้อมูลได้", "error");
+        window.renderStockTable([]);
         return;
       }
 
       Swal.fire({
         icon: "success",
-        title: "บันทึกสำเร็จ",
-        html: `บันทึกแล้ว <b>${escapeHtml(response.savedCount ?? rows.length)}</b> รายการ`
+        title: "เธเธฑเธเธ—เธถเธเธชเธณเน€เธฃเนเธ",
+        html: `เธเธฑเธเธ—เธถเธเนเธฅเนเธง <b>${escapeHtml(response.savedCount ?? rows.length)}</b> เธฃเธฒเธขเธเธฒเธฃ`
       });
 
       await window.__reloadShiftCountTable();
     } catch (error) {
       showLoading(false);
-      Swal.fire("เชื่อมต่อไม่สำเร็จ", error.toString(), "error");
+      Swal.fire("เน€เธเธทเนเธญเธกเธ•เนเธญเนเธกเนเธชเธณเน€เธฃเนเธ", error.toString(), "error");
     }
   }
 
@@ -1396,22 +1417,22 @@
     tbody.closest("table")?.classList.add("stack-table-mobile");
     const rows = Array.isArray(historyList) ? historyList : [];
     if (rows.length === 0) {
-      tbody.innerHTML = emptyTableRowHtml(8, "ยังไม่มีประวัติการตรวจนับ");
+      tbody.innerHTML = emptyTableRowHtml(8, "เธขเธฑเธเนเธกเนเธกเธตเธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธ•เธฃเธงเธเธเธฑเธ");
       return;
     }
 
     tbody.innerHTML = rows.map(item => {
-      const isCorrect = String(item.Result || "") === "ถูกต้อง";
+      const isCorrect = String(item.Result || "") === "เธ–เธนเธเธ•เนเธญเธ";
       return `
         <tr>
-          <td data-label="วันที่">${escapeHtml(formatThaiDate(item.Date))}</td>
-          <td data-label="เวร"><span class="badge bg-primary">${escapeHtml(getShiftLabel(item.Shift))}</span></td>
-          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
-          <td data-label="แอมป์ดี" class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>
-          <td data-label="แอมป์เปล่า" class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>
-          <td data-label="ยอดรวม" class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
-          <td data-label="ผลตรวจสอบ" class="text-center ${isCorrect ? "text-success fw-semibold" : "text-danger fw-semibold"}">${isCorrect ? "✓ ครบถ้วน" : "✗ ไม่ตรง"}</td>
-          <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>
+          <td data-label="เธงเธฑเธเธ—เธตเน">${escapeHtml(formatThaiDate(item.Date))}</td>
+          <td data-label="เน€เธงเธฃ"><span class="badge bg-primary">${escapeHtml(getShiftLabel(item.Shift))}</span></td>
+          <td data-label="เธเธทเนเธญเธขเธฒ">${escapeHtml(item.DrugName || "-")}</td>
+          <td data-label="เนเธญเธกเธเนเธ”เธต" class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>
+          <td data-label="เนเธญเธกเธเนเน€เธเธฅเนเธฒ" class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>
+          <td data-label="เธขเธญเธ”เธฃเธงเธก" class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
+          <td data-label="เธเธฅเธ•เธฃเธงเธเธชเธญเธ" class="text-center ${isCorrect ? "text-success fw-semibold" : "text-danger fw-semibold"}">${isCorrect ? "โ“ เธเธฃเธเธ–เนเธงเธ" : "โ— เนเธกเนเธ•เธฃเธ"}</td>
+          <td data-label="เธเธนเนเธเธฑเธเธ—เธถเธ">${escapeHtml(item.User || "-")}</td>
         </tr>
       `;
     }).join("");
@@ -1440,7 +1461,7 @@
     });
 
     if (masterRows.length === 0) {
-      tbody.innerHTML = emptyTableRowHtml(8, "ยังไม่มีรายการยาในระบบ");
+      tbody.innerHTML = emptyTableRowHtml(8, "เธขเธฑเธเนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเธขเธฒเนเธเธฃเธฐเธเธ");
       updateShiftBatchSummary();
       return;
     }
@@ -1451,35 +1472,35 @@
       const emptyAmp = saved ? saved.EmptyAmp ?? "" : "";
       const target = Number(item.StockWard || 0);
       const hasSaved = !!saved;
-      const unit = item.Unit || "หน่วย";
+      const unit = item.Unit || "เธซเธเนเธงเธข";
       const total = isValidNumber(ampRemain) && isValidNumber(emptyAmp) ? Number(ampRemain) + Number(emptyAmp) : null;
       const diff = total === null ? null : total - target;
       const statusHtml = hasSaved
-        ? '<span class="badge bg-success-subtle text-success px-2 py-1">● ตรวจแล้ว</span>'
-        : '<span class="badge bg-danger-subtle text-danger px-2 py-1">● ยังไม่นับ</span>';
+        ? '<span class="badge bg-success-subtle text-success px-2 py-1">โ— เธ•เธฃเธงเธเนเธฅเนเธง</span>'
+        : '<span class="badge bg-danger-subtle text-danger px-2 py-1">โ— เธขเธฑเธเนเธกเนเธเธฑเธ</span>';
       const resultHtml = total === null
         ? '<span class="text-muted">-</span>'
         : diff === 0
-          ? '<span class="text-success fw-semibold">✓ ครบถ้วน</span>'
+          ? '<span class="text-success fw-semibold">โ“ เธเธฃเธเธ–เนเธงเธ</span>'
           : diff < 0
-            ? `<span class="text-danger fw-semibold">✗ ยาขาด ${Math.abs(diff)} ${escapeHtml(unit)}</span>`
-            : `<span class="text-danger fw-semibold">✗ ยาเกิน ${diff} ${escapeHtml(unit)}</span>`;
+            ? `<span class="text-danger fw-semibold">โ— เธขเธฒเธเธฒเธ” ${Math.abs(diff)} ${escapeHtml(unit)}</span>`
+            : `<span class="text-danger fw-semibold">โ— เธขเธฒเน€เธเธดเธ ${diff} ${escapeHtml(unit)}</span>`;
 
       return `
         <tr data-drug-id="${escapeHtml(item.DrugID || "")}" data-target="${escapeHtml(target)}" data-unit="${escapeHtml(unit)}" data-saved="${hasSaved ? "1" : "0"}">
-          <td data-label="สถานะ" class="count-status-cell">${statusHtml}</td>
-          <td data-label="ชื่อยา">
+          <td data-label="เธชเธ–เธฒเธเธฐ" class="count-status-cell">${statusHtml}</td>
+          <td data-label="เธเธทเนเธญเธขเธฒ">
             <div class="fw-semibold">${escapeHtml(item.DrugName || "-")}</div>
             <small class="text-muted">${escapeHtml(item.Strength || "")}</small>
           </td>
-          <td data-label="ยอดเป้าหมาย Stock" class="text-center fw-bold">${escapeHtml(target)}</td>
-          <td data-label="แอมป์ดี (พร้อมใช้)" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm amp-remain-input" value="${escapeHtml(ampRemain)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์ดี แถว ${index + 1}"></td>
-          <td data-label="แอมป์เปล่า" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm empty-amp-input" value="${escapeHtml(emptyAmp)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์เปล่า แถว ${index + 1}"></td>
-          <td data-label="ยอดรวมที่นับได้" class="count-total-cell text-center fw-bold">${total === null ? "-" : escapeHtml(total)}</td>
-          <td data-label="ผลตรวจสอบ" class="count-result-cell text-center">${resultHtml}</td>
+          <td data-label="เธขเธญเธ”เน€เธเนเธฒเธซเธกเธฒเธข Stock" class="text-center fw-bold">${escapeHtml(target)}</td>
+          <td data-label="เนเธญเธกเธเนเธ”เธต (เธเธฃเนเธญเธกเนเธเน)" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm amp-remain-input" value="${escapeHtml(ampRemain)}" data-row-index="${index}" inputmode="numeric" aria-label="เนเธญเธกเธเนเธ”เธต เนเธ–เธง ${index + 1}"></td>
+          <td data-label="เนเธญเธกเธเนเน€เธเธฅเนเธฒ" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm empty-amp-input" value="${escapeHtml(emptyAmp)}" data-row-index="${index}" inputmode="numeric" aria-label="เนเธญเธกเธเนเน€เธเธฅเนเธฒ เนเธ–เธง ${index + 1}"></td>
+          <td data-label="เธขเธญเธ”เธฃเธงเธกเธ—เธตเนเธเธฑเธเนเธ”เน" class="count-total-cell text-center fw-bold">${total === null ? "-" : escapeHtml(total)}</td>
+          <td data-label="เธเธฅเธ•เธฃเธงเธเธชเธญเธ" class="count-result-cell text-center">${resultHtml}</td>
           <td data-label="Action" class="text-center">
             <button type="button" class="btn btn-primary-custom btn-sm row-save-btn" tabindex="-1">
-              <i class="fas fa-floppy-disk me-1"></i>${hasSaved ? "แก้ไข" : "บันทึก"}
+              <i class="fas fa-floppy-disk me-1"></i>${hasSaved ? "เนเธเนเนเธ" : "เธเธฑเธเธ—เธถเธ"}
             </button>
           </td>
         </tr>
@@ -1533,7 +1554,7 @@
         const row = button.closest("tr[data-drug-id]");
         if (!row) return;
         if (row.dataset.completed !== "1") {
-          Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบก่อนบันทึกแถวนี้", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเนเธญเธกเธนเธฅเนเธซเนเธเธฃเธเธเนเธญเธเธเธฑเธเธ—เธถเธเนเธ–เธงเธเธตเน", "warning");
           return;
         }
         saveShiftBatchRows([row]);
@@ -1553,15 +1574,42 @@
   async function loadShiftCountPageData() {
     const selectedDate = document.getElementById("count-date-input")?.value || getBangkokDateString(new Date());
     const selectedShift = getSelectedShiftValue();
-    const [masterRes, historyRes] = await Promise.all([
+    setInlineLoadingState("shift-batch-loading", true, "โปรดรอสักครู่ ระบบกำลังอัปเดตข้อมูลล่าสุด");
+    const cachedMaster = Array.isArray(window.__shiftCountMasterCache) && window.__shiftCountMasterCache.length ? window.__shiftCountMasterCache : getDrugMasterCache();
+    const cachedHistory = Array.isArray(window.__shiftCountHistoryCache) && window.__shiftCountHistoryCache.length ? window.__shiftCountHistoryCache : getShiftCountHistoryCache();
+
+    if (cachedMaster.length || cachedHistory.length) {
+      window.renderShiftBatchTable(cachedMaster, cachedHistory, selectedDate, selectedShift);
+      window.renderShiftCountTable(cachedHistory.filter(item => getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")));
+    } else {
+      const batchTbody = document.getElementById("shift-batch-tbody");
+      const historyTbody = document.getElementById("shift-history-tbody");
+      renderEmptyRow(batchTbody, 8, "กำลังโหลดรายการยา...");
+      renderEmptyRow(historyTbody, 8, "กำลังโหลดประวัติการตรวจนับ...");
+    }
+
+    const [masterRes, historyRes] = await Promise.allSettled([
       GASApi.getDrugMaster(),
       GASApi.getShiftCountHistory()
     ]);
 
-    window.__shiftCountMasterCache = masterRes.success && Array.isArray(masterRes.data) ? masterRes.data : [];
-    window.__shiftCountHistoryCache = historyRes.success && Array.isArray(historyRes.data) ? historyRes.data : [];
+    const masterOk = masterRes.status === "fulfilled" && masterRes.value && masterRes.value.success;
+    const historyOk = historyRes.status === "fulfilled" && historyRes.value && historyRes.value.success;
+    const masterRows = masterOk ? (masterRes.value.data || []) : cachedMaster;
+    const historyRows = historyOk ? (historyRes.value.data || []) : cachedHistory;
+
+    if (masterOk) {
+      setDrugMasterCache(masterRows);
+    }
+    if (historyOk) {
+      setShiftCountHistoryCache(historyRows);
+    }
+
+    window.__shiftCountMasterCache = Array.isArray(masterRows) ? masterRows : [];
+    window.__shiftCountHistoryCache = Array.isArray(historyRows) ? historyRows : [];
     window.renderShiftBatchTable(window.__shiftCountMasterCache, window.__shiftCountHistoryCache, selectedDate, selectedShift);
     window.renderShiftCountTable(window.__shiftCountHistoryCache.filter(item => getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")));
+    setInlineLoadingState("shift-batch-loading", false);
   }
 
   window.__reloadShiftCountTable = loadShiftCountPageData;
@@ -1575,7 +1623,7 @@
 
     const todayLabel = document.getElementById("shift-today-label");
     if (todayLabel) {
-      todayLabel.textContent = `วันที่ปัจจุบัน: ${formatThaiDate(new Date())}`;
+      todayLabel.textContent = `เธงเธฑเธเธ—เธตเนเธเธฑเธเธเธธเธเธฑเธ: ${formatThaiDate(new Date())}`;
     }
 
     const countUserInput = document.getElementById("count-user-input");
@@ -1583,7 +1631,7 @@
       countUserInput.value = countUserInput.value || getCurrentUserName();
     }
 
-    const savedShift = localStorage.getItem("shiftcount_shift") || "เช้า";
+    const savedShift = localStorage.getItem("shiftcount_shift") || "เน€เธเนเธฒ";
     const shiftRadio = document.querySelector(`input[name="shift-select"][value="${savedShift}"]`);
     if (shiftRadio) {
       shiftRadio.checked = true;
@@ -1605,15 +1653,15 @@
         const completedRows = rows.filter(row => row.dataset.completed === "1");
         const mismatchRows = rows.filter(row => row.dataset.completed === "1" && row.dataset.match !== "1");
         if (rows.length === 0) {
-          Swal.fire("แจ้งเตือน", "ยังไม่มีรายการยาให้ตรวจนับ", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธขเธฑเธเนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเธขเธฒเนเธซเนเธ•เธฃเธงเธเธเธฑเธ", "warning");
           return;
         }
         if (completedRows.length !== rows.length) {
-          Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบทุกแถวก่อนส่งยอด", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเนเธญเธกเธนเธฅเนเธซเนเธเธฃเธเธ—เธธเธเนเธ–เธงเธเนเธญเธเธชเนเธเธขเธญเธ”", "warning");
           return;
         }
         if (mismatchRows.length > 0) {
-          Swal.fire("แจ้งเตือน", "ยังมีรายการที่ผลตรวจไม่ตรงกับยอดเป้าหมาย", "warning");
+          Swal.fire("เนเธเนเธเน€เธ•เธทเธญเธ", "เธขเธฑเธเธกเธตเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธเธฅเธ•เธฃเธงเธเนเธกเนเธ•เธฃเธเธเธฑเธเธขเธญเธ”เน€เธเนเธฒเธซเธกเธฒเธข", "warning");
           return;
         }
         await saveShiftBatchRows(rows);
@@ -1645,7 +1693,12 @@
       });
     }
 
-    await loadShiftCountPageData();
+    showLoading(true);
+    try {
+      await loadShiftCountPageData();
+    } finally {
+      showLoading(false);
+    }
   };
 
   function renderDashboardChart(stockList) {
@@ -1661,13 +1714,15 @@
       .filter(item => parseFloat(item.QtyRemain || 0) > 0)
       .sort((a, b) => parseFloat(b.QtyRemain || 0) - parseFloat(a.QtyRemain || 0))
       .slice(0, 8);
+    const masterRows = Array.isArray(window.__drugMasterCache) && window.__drugMasterCache.length ? window.__drugMasterCache : getDrugMasterCache();
+    const masterMap = new Map(masterRows.map(item => [String(item.DrugID || ""), item]));
 
     window.__dashboardChart = new Chart(canvas, {
       type: "bar",
       data: {
-        labels: topRows.map(item => item.DrugName || "-"),
+        labels: topRows.map(item => (masterMap.get(String(item.DrugID || ""))?.DrugName || item.DrugName || item.DrugID || "-")),
         datasets: [{
-          label: "คงเหลือ",
+          label: "เธเธเน€เธซเธฅเธทเธญ",
           data: topRows.map(item => parseFloat(item.QtyRemain || 0)),
           backgroundColor: "#1A365D"
         }]
@@ -1689,44 +1744,54 @@
     tbody.closest("table")?.classList.add("stack-table-mobile");
     const rows = Array.isArray(alerts) ? alerts : [];
     if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">ไม่พบข้อมูลใกล้หมดอายุ</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">เนเธกเนเธเธเธเนเธญเธกเธนเธฅเนเธเธฅเนเธซเธกเธ”เธญเธฒเธขเธธ</td></tr>';
       return;
     }
 
     tbody.innerHTML = rows.map(item => `
       <tr>
-        <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
+        <td data-label="เธเธทเนเธญเธขเธฒ">${escapeHtml(item.DrugName || "-")}</td>
         <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
-        <td data-label="วันคงเหลือ" class="text-center fw-semibold">${escapeHtml(item.DaysLeft ?? "-")}</td>
+        <td data-label="เธงเธฑเธเธเธเน€เธซเธฅเธทเธญ" class="text-center fw-semibold">${escapeHtml(item.DaysLeft ?? "-")}</td>
       </tr>
     `).join("");
   }
 
   async function loadDashboardData() {
-    const [summaryRes, stockRes, alertRes] = await Promise.all([
+    const [summaryRes, stockRes, alertRes, masterRes] = await Promise.allSettled([
       GASApi.getDashboardData(),
       GASApi.getDrugStock(),
-      GASApi.checkExpiryAlert()
+      GASApi.checkExpiryAlert(),
+      GASApi.getDrugMaster()
     ]);
 
-    if (summaryRes.success && summaryRes.data) {
-      const summary = summaryRes.data;
+    const summary = summaryRes.status === "fulfilled" ? summaryRes.value : null;
+    const stock = stockRes.status === "fulfilled" ? stockRes.value : null;
+    const alerts = alertRes.status === "fulfilled" ? alertRes.value : null;
+    const master = masterRes.status === "fulfilled" ? masterRes.value : null;
+
+    if (master && master.success && Array.isArray(master.data)) {
+      setDrugMasterCache(master.data);
+    }
+
+    if (summary && summary.success && summary.data) {
+      const summaryData = summary.data;
       const totalDrugs = document.getElementById("stat-total-drugs");
       const totalLots = document.getElementById("stat-total-lots");
       const nearExpiry = document.getElementById("stat-near-expiry");
       const todayDisbursement = document.getElementById("stat-today-disbursement");
-      if (totalDrugs) totalDrugs.textContent = summary.totalDrugs ?? 0;
-      if (totalLots) totalLots.textContent = summary.totalLots ?? 0;
-      if (nearExpiry) nearExpiry.textContent = summary.nearExpiryCount ?? 0;
-      if (todayDisbursement) todayDisbursement.textContent = summary.todayDisbursements ?? 0;
+      if (totalDrugs) totalDrugs.textContent = summaryData.totalDrugs ?? 0;
+      if (totalLots) totalLots.textContent = summaryData.totalLots ?? 0;
+      if (nearExpiry) nearExpiry.textContent = summaryData.nearExpiryCount ?? 0;
+      if (todayDisbursement) todayDisbursement.textContent = summaryData.todayDisbursements ?? 0;
     }
 
-    if (stockRes.success) {
-      renderDashboardChart(stockRes.data || []);
+    if (stock && stock.success) {
+      renderDashboardChart(stock.data || []);
     }
 
-    if (alertRes.success) {
-      renderExpiryList(alertRes.data || []);
+    if (alerts && alerts.success) {
+      renderExpiryList(alerts.data || []);
     }
   }
 
@@ -1740,7 +1805,7 @@
         try {
           await loadDashboardData();
         } catch (err) {
-          Swal.fire("เกิดข้อผิดพลาด", err.toString(), "error");
+          Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", err.toString(), "error");
         } finally {
           showLoading(false);
         }
@@ -1757,9 +1822,11 @@
     try {
       await loadDashboardData();
     } catch (err) {
-      Swal.fire("เกิดข้อผิดพลาด", err.toString(), "error");
+      Swal.fire("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”", err.toString(), "error");
     } finally {
       showLoading(false);
     }
   };
 })();
+
+
