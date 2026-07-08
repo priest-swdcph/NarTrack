@@ -228,6 +228,39 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 4px 10px rgba(26, 54, 93, 0.2);
 }
 
+.shiftcount-hero {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 28%),
+    linear-gradient(135deg, #1a365d 0%, #0f766e 100%);
+  overflow: hidden;
+}
+
+.shiftcount-shortcut-card {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.15), transparent 32%),
+    linear-gradient(135deg, #0f172a 0%, #1a365d 55%, #0f766e 100%);
+  color: white;
+}
+
+.shiftcount-shortcut-card .text-white-75 {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.shiftcount-shortcut-card .btn-light {
+  color: #0f172a;
+}
+
+.shift-selector .btn-outline-light {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.shift-selector .btn-outline-light:hover,
+.shift-selector .btn-check:checked + .btn-outline-light {
+  background-color: rgba(255, 255, 255, 0.96);
+  color: var(--primary-color);
+}
+
 /* Tables styling */
 .table-responsive {
   border-radius: 12px;
