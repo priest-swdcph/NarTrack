@@ -218,9 +218,9 @@
 
         const stockID = document.getElementById("disburse-stock-select")?.value || "";
         const qty = parseFloat(document.getElementById("disburse-qty-input")?.value || "0");
-        const patientName = document.getElementById("patient-name-input")?.value.trim() || "";
-        const hn = document.getElementById("patient-hn-input")?.value.trim() || "";
-        const user = document.getElementById("disburse-user-input")?.value.trim() || "";
+        const patientName = (document.getElementById("patient-name-input")?.value || "").trim();
+        const hn = (document.getElementById("patient-hn-input")?.value || "").trim();
+        const user = (document.getElementById("disburse-user-input")?.value || "").trim();
 
         if (!stockID) {
           Swal.fire("แจ้งเตือน", "กรุณาเลือกรายการยาและล็อตก่อนตัดจ่าย", "warning");
@@ -907,6 +907,768 @@
           }
         }, 300);
       });
+    }
+  };
+  function getBangkokDateString(date) {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(date || new Date());
+  }
+
+  function formatThaiDate(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("th-TH-u-ca-buddhist", {
+      timeZone: "Asia/Bangkok",
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  function formatThaiDateTime(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("th-TH-u-ca-buddhist", {
+      timeZone: "Asia/Bangkok",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    }) + " " + date.toLocaleTimeString("th-TH", {
+      timeZone: "Asia/Bangkok",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  function getSelectedShiftValue() {
+    const checked = document.querySelector('input[name="shift-select"]:checked');
+    return checked ? checked.value : "เช้า";
+  }
+
+  function getShiftLabel(shift) {
+    const labels = {
+      "เช้า": "เวรเช้า",
+      "บ่าย": "เวรบ่าย",
+      "ดึก": "เวรดึก"
+    };
+    return labels[shift] || shift || "-";
+  }
+
+  function getCurrentUserName() {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (user && user.name) return user.name;
+    } catch (err) {}
+    return "เจ้าหน้าที่เวร";
+  }
+
+  function isValidNumber(value) {
+    return value !== "" && !Number.isNaN(Number(value)) && Number(value) >= 0;
+  }
+
+  function emptyTableRowHtml(colCount, message) {
+    const cells = [`<td class="text-center text-muted py-4">${escapeHtml(message)}</td>`];
+    for (let i = 1; i < colCount; i++) {
+      cells.push("<td></td>");
+    }
+    return `<tr>${cells.join("")}</tr>`;
+  }
+
+  function destroyTableInstance(instanceName) {
+    if (window[instanceName] && typeof window[instanceName].destroy === "function") {
+      window[instanceName].destroy();
+      window[instanceName] = null;
+    }
+  }
+
+  window.renderDisbursementTable = function (rows) {
+    const tbody = document.getElementById("disbursement-tbody");
+    if (!tbody) return;
+
+    destroyTableInstance("__disbursementTable");
+    tbody.closest("table")?.classList.add("stack-table-mobile");
+    const list = Array.isArray(rows) ? rows : [];
+    if (list.length === 0) {
+      tbody.innerHTML = emptyTableRowHtml(7, "ยังไม่มีประวัติการตัดจ่ายยา");
+      return;
+    }
+
+    tbody.innerHTML = list.map(item => `
+      <tr>
+        <td data-label="รหัสรายการ"><span class="fw-semibold text-primary">${escapeHtml(item.DisburseID || item.DrugName || "-")}</span></td>
+        <td data-label="ชื่อยา" class="fw-semibold">${escapeHtml(item.DrugName || "-")}</td>
+        <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
+        <td data-label="ชื่อผู้ป่วย">${escapeHtml(item.PatientName || "-")} <span class="text-muted">(${escapeHtml(item.HN || "-")})</span></td>
+        <td data-label="จำนวน" class="text-end fw-bold">${escapeHtml(item.Qty ?? 0)}</td>
+        <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>
+        <td data-label="เวลา">${formatThaiDateTime(item.Timestamp || item.Date)}</td>
+      </tr>
+    `).join("");
+
+    window.__disbursementTable = $("#disbursement-table").DataTable({
+      language: {
+        url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/th.json"
+      },
+      order: [[0, "desc"]],
+      pageLength: 10,
+      responsive: true
+    });
+  };
+
+  window.renderStockTable = function (stockList) {
+    const tbody = document.getElementById("stock-tbody");
+    if (!tbody) return;
+
+    destroyTableInstance("__stockDataTable");
+    tbody.closest("table")?.classList.add("stack-table-mobile");
+    const rows = Array.isArray(stockList) ? stockList : [];
+    const today = new Date();
+    if (rows.length === 0) {
+      tbody.innerHTML = emptyTableRowHtml(9, "ยังไม่มีข้อมูลรับเข้ายา");
+      return;
+    }
+
+    tbody.innerHTML = rows.map(item => {
+      const remain = parseFloat(item.QtyRemain || 0);
+      const expiryDate = item.ExpiryDate ? new Date(item.ExpiryDate) : null;
+      let statusBadge = '<span class="badge bg-secondary">ปกติ</span>';
+
+      if (remain <= 0) {
+        statusBadge = '<span class="badge bg-secondary">หมดแล้ว</span>';
+      } else if (expiryDate && !Number.isNaN(expiryDate.getTime())) {
+        const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) {
+          statusBadge = '<span class="expiry-status-danger">หมดอายุ</span>';
+        } else if (diffDays <= 30) {
+          statusBadge = '<span class="expiry-status-warning">ใกล้หมดอายุ</span>';
+        } else {
+          statusBadge = '<span class="expiry-status-safe">ปกติ</span>';
+        }
+      }
+
+      return `
+        <tr>
+          <td data-label="รหัสสต็อก"><span class="fw-semibold text-primary">${escapeHtml(item.StockID || "-")}</span></td>
+          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
+          <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
+          <td data-label="วันหมดอายุ">${escapeHtml(formatThaiDate(item.ExpiryDate))}</td>
+          <td data-label="รับเข้า">${escapeHtml(item.QtyReceive ?? 0)}</td>
+          <td data-label="คงเหลือ" class="fw-bold">${escapeHtml(item.QtyRemain ?? 0)}</td>
+          <td data-label="วันที่รับเข้า">${escapeHtml(formatThaiDate(item.ReceiveDate))}</td>
+          <td data-label="ผู้บันทึก">${escapeHtml(item.CreatedBy || "-")}</td>
+          <td data-label="สถานะ">${statusBadge}</td>
+        </tr>
+      `;
+    }).join("");
+
+    window.__stockDataTable = $("#stock-table").DataTable({
+      language: {
+        url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/th.json"
+      },
+      order: [[0, "desc"]],
+      pageLength: 10
+    });
+  };
+
+  window.renderDrugTable = function (drugList) {
+    const tbody = document.getElementById("drug-tbody");
+    if (!tbody) return;
+
+    destroyTableInstance("__drugDataTable");
+    tbody.closest("table")?.classList.add("stack-table-mobile");
+    const rows = Array.isArray(drugList) ? drugList : [];
+    if (rows.length === 0) {
+      tbody.innerHTML = emptyTableRowHtml(6, "ยังไม่มีรายการยาในระบบ");
+      return;
+    }
+
+    tbody.innerHTML = rows.map(item => `
+      <tr>
+        <td data-label="รหัสยา"><span class="fw-semibold text-primary">${escapeHtml(item.DrugID || "-")}</span></td>
+        <td data-label="ชื่อยา" class="fw-bold">${escapeHtml(item.DrugName || "-")}</td>
+        <td data-label="ความแรง">${escapeHtml(item.Strength || "-")}</td>
+        <td data-label="หน่วย"><span class="badge bg-secondary">${escapeHtml(item.Unit || "-")}</span></td>
+        <td data-label="Stock Ward" class="text-center fw-bold" style="font-size:1.05rem; color:#10b981;">${escapeHtml(item.StockWard ?? 0)}</td>
+        <td data-label="จัดการ" class="text-center">
+          <button class="btn btn-warning btn-sm btn-edit-drug"
+            data-id="${escapeHtml(item.DrugID || "")}"
+            data-name="${escapeHtml(item.DrugName || "")}"
+            data-strength="${escapeHtml(item.Strength || "")}"
+            data-unit="${escapeHtml(item.Unit || "")}"
+            data-stock="${escapeHtml(item.StockWard ?? 0)}">
+            <i class="fas fa-edit me-1"></i>แก้ไข
+          </button>
+        </td>
+      </tr>
+    `).join("");
+
+    document.querySelectorAll(".btn-edit-drug").forEach(btn => {
+      btn.addEventListener("click", function () {
+        document.getElementById("drug-id-input").value = this.dataset.id || "";
+        document.getElementById("drug-name-master").value = this.dataset.name || "";
+        document.getElementById("drug-strength-master").value = this.dataset.strength || "";
+        document.getElementById("drug-unit-master").value = this.dataset.unit || "";
+        document.getElementById("stock-ward-master").value = this.dataset.stock || 0;
+        document.getElementById("drugModalLabel").innerHTML = '<i class="fas fa-edit me-2"></i>แก้ไขข้อมูลยา';
+        new bootstrap.Modal(document.getElementById("drugModal")).show();
+      });
+    });
+
+    window.__drugDataTable = $("#drug-table").DataTable({
+      language: {
+        url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/th.json"
+      },
+      order: [[0, "asc"]],
+      pageLength: 10
+    });
+  };
+
+  function getShiftBatchTableRows() {
+    const tbody = document.getElementById("shift-batch-tbody");
+    return tbody ? Array.from(tbody.querySelectorAll("tr[data-drug-id]")) : [];
+  }
+
+  function updateShiftBatchRow(row) {
+    if (!row) return;
+    const ampInput = row.querySelector(".amp-remain-input");
+    const emptyInput = row.querySelector(".empty-amp-input");
+    const totalCell = row.querySelector(".count-total-cell");
+    const resultCell = row.querySelector(".count-result-cell");
+    const statusCell = row.querySelector(".count-status-cell");
+    const actionBtn = row.querySelector(".row-save-btn");
+    const target = parseFloat(row.dataset.target || "0");
+    const unit = row.dataset.unit || "หน่วย";
+    const ampValue = ampInput ? ampInput.value : "";
+    const emptyValue = emptyInput ? emptyInput.value : "";
+    const filled = isValidNumber(ampValue) && isValidNumber(emptyValue);
+    const ampRemain = filled ? parseFloat(ampValue) : 0;
+    const emptyAmp = filled ? parseFloat(emptyValue) : 0;
+    const total = filled ? ampRemain + emptyAmp : null;
+    const diff = filled ? total - target : null;
+
+    row.dataset.completed = filled ? "1" : "0";
+    row.dataset.match = filled && diff === 0 ? "1" : "0";
+    row.dataset.difference = filled ? String(diff) : "";
+
+    if (statusCell) {
+      statusCell.innerHTML = filled
+        ? '<span class="badge bg-success-subtle text-success px-2 py-1"><i class="fas fa-circle-check me-1"></i>● ตรวจแล้ว</span>'
+        : '<span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="fas fa-circle-xmark me-1"></i>● ยังไม่นับ</span>';
+    }
+
+    if (totalCell) {
+      totalCell.textContent = filled ? String(total) : "-";
+    }
+
+    if (resultCell) {
+      if (!filled) {
+        resultCell.innerHTML = '<span class="text-muted">-</span>';
+      } else if (diff === 0) {
+        resultCell.innerHTML = '<span class="text-success fw-semibold">✓ ครบถ้วน</span>';
+      } else if (diff < 0) {
+        resultCell.innerHTML = `<span class="text-danger fw-semibold">✗ ยาขาด ${Math.abs(diff)} ${escapeHtml(unit)}</span>`;
+      } else {
+        resultCell.innerHTML = `<span class="text-danger fw-semibold">✗ ยาเกิน ${diff} ${escapeHtml(unit)}</span>`;
+      }
+    }
+
+    if (actionBtn) {
+      actionBtn.disabled = !filled;
+      actionBtn.innerHTML = row.dataset.saved === "1"
+        ? '<i class="fas fa-pen-to-square me-1"></i>แก้ไข'
+        : '<i class="fas fa-floppy-disk me-1"></i>บันทึก';
+    }
+
+    row.classList.remove("table-success", "table-danger", "table-warning");
+    if (!filled) {
+      row.classList.add("table-warning");
+    } else if (diff === 0) {
+      row.classList.add("table-success");
+    } else {
+      row.classList.add("table-danger");
+    }
+  }
+
+  function updateShiftBatchSummary() {
+    const rows = getShiftBatchTableRows();
+    const total = rows.length;
+    const completed = rows.filter(row => row.dataset.completed === "1").length;
+    const mismatch = rows.filter(row => row.dataset.completed === "1" && row.dataset.match !== "1").length;
+    const pending = total - completed;
+    const ready = completed - mismatch;
+    const summaryText = document.getElementById("shift-batch-summary-text");
+    const summaryChecked = document.getElementById("shift-batch-summary-checked");
+    const summaryPending = document.getElementById("shift-batch-summary-pending");
+    const summaryMismatch = document.getElementById("shift-batch-summary-mismatch");
+    const summaryReady = document.getElementById("shift-batch-summary-ready");
+    const alertBox = document.getElementById("shift-batch-alert");
+    const submitBtn = document.getElementById("btn-save-batch");
+
+    if (summaryText) summaryText.textContent = `ตรวจสอบแล้ว ${completed} จาก ${total} รายการ`;
+    if (summaryChecked) summaryChecked.textContent = String(completed);
+    if (summaryPending) summaryPending.textContent = String(pending);
+    if (summaryMismatch) summaryMismatch.textContent = String(mismatch);
+    if (summaryReady) summaryReady.textContent = String(ready);
+
+    let alertType = "info";
+    let alertMessage = "พร้อมตรวจนับต่อได้ทันที";
+    const disabled = total === 0 || pending > 0 || mismatch > 0;
+
+    if (pending > 0) {
+      alertType = "warning";
+      alertMessage = `ยังมี ${pending} รายการที่ยังไม่นับครบ ระบบจะไม่อนุญาตให้ส่งยอดจนกว่าจะกรอกครบทุกแถว`;
+    } else if (mismatch > 0) {
+      alertType = "danger";
+      alertMessage = `พบ ${mismatch} รายการที่ผลรวมไม่ตรงกับยอดเป้าหมาย กรุณาตรวจทานก่อนส่งเวร`;
+    } else if (total > 0) {
+      alertType = "success";
+      alertMessage = "ครบทุกแถวและผลตรวจสอบตรงทั้งหมด สามารถบันทึกส่งตรวจเช็คยอดได้";
+    }
+
+    if (alertBox) {
+      alertBox.className = `alert alert-${alertType} border-0 mb-0`;
+      alertBox.textContent = alertMessage;
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = disabled;
+    }
+  }
+
+  function getShiftBatchPayload() {
+    const selectedDate = document.getElementById("count-date-input")?.value || getBangkokDateString(new Date());
+    const selectedShift = getSelectedShiftValue();
+    const user = (document.getElementById("count-user-input")?.value || "").trim() || getCurrentUserName();
+    const rows = getShiftBatchTableRows();
+
+    return {
+      Date: selectedDate,
+      Shift: selectedShift,
+      User: user,
+      Items: rows.map(row => ({
+        DrugID: row.dataset.drugId,
+        AmpRemain: parseFloat(row.querySelector(".amp-remain-input")?.value || "0"),
+        EmptyAmp: parseFloat(row.querySelector(".empty-amp-input")?.value || "0")
+      }))
+    };
+  }
+
+  async function saveShiftBatchRows(rowList) {
+    const rows = Array.isArray(rowList) ? rowList : [];
+    if (rows.length === 0) return;
+
+    const payload = {
+      Date: document.getElementById("count-date-input")?.value || getBangkokDateString(new Date()),
+      Shift: getSelectedShiftValue(),
+      User: (document.getElementById("count-user-input")?.value || "").trim() || getCurrentUserName(),
+      Items: rows.map(row => ({
+        DrugID: row.dataset.drugId,
+        AmpRemain: parseFloat(row.querySelector(".amp-remain-input")?.value || "0"),
+        EmptyAmp: parseFloat(row.querySelector(".empty-amp-input")?.value || "0")
+      }))
+    };
+
+    showLoading(true);
+    try {
+      const response = await GASApi.saveShiftCountBatch(payload);
+      showLoading(false);
+      if (!response.success) {
+        Swal.fire("บันทึกไม่สำเร็จ", response.message || "ไม่สามารถบันทึกข้อมูลได้", "error");
+        return;
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "บันทึกสำเร็จ",
+        html: `บันทึกแล้ว <b>${escapeHtml(response.savedCount ?? rows.length)}</b> รายการ`
+      });
+
+      await window.__reloadShiftCountTable();
+    } catch (error) {
+      showLoading(false);
+      Swal.fire("เชื่อมต่อไม่สำเร็จ", error.toString(), "error");
+    }
+  }
+
+  window.renderShiftCountTable = function (historyList) {
+    const tbody = document.getElementById("shift-history-tbody");
+    if (!tbody) return;
+
+    destroyTableInstance("__shiftCountHistoryTable");
+    tbody.closest("table")?.classList.add("stack-table-mobile");
+    const rows = Array.isArray(historyList) ? historyList : [];
+    if (rows.length === 0) {
+      tbody.innerHTML = emptyTableRowHtml(8, "ยังไม่มีประวัติการตรวจนับ");
+      return;
+    }
+
+    tbody.innerHTML = rows.map(item => {
+      const isCorrect = String(item.Result || "") === "ถูกต้อง";
+      return `
+        <tr>
+          <td data-label="วันที่">${escapeHtml(formatThaiDate(item.Date))}</td>
+          <td data-label="เวร"><span class="badge bg-primary">${escapeHtml(getShiftLabel(item.Shift))}</span></td>
+          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
+          <td data-label="แอมป์ดี" class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>
+          <td data-label="แอมป์เปล่า" class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>
+          <td data-label="ยอดรวม" class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
+          <td data-label="ผลตรวจสอบ" class="text-center ${isCorrect ? "text-success fw-semibold" : "text-danger fw-semibold"}">${isCorrect ? "✓ ครบถ้วน" : "✗ ไม่ตรง"}</td>
+          <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>
+        </tr>
+      `;
+    }).join("");
+
+    window.__shiftCountHistoryTable = $("#shift-history-table").DataTable({
+      language: {
+        url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/th.json"
+      },
+      order: [[0, "desc"]],
+      pageLength: 10
+    });
+  };
+
+  window.renderShiftBatchTable = function (masterList, historyList, selectedDate, selectedShift) {
+    const tbody = document.getElementById("shift-batch-tbody");
+    if (!tbody) return;
+
+    tbody.closest("table")?.classList.add("stack-table-mobile");
+    const masterRows = Array.isArray(masterList) ? masterList : [];
+    const historyRows = Array.isArray(historyList) ? historyList : [];
+    const map = new Map();
+    historyRows.forEach(item => {
+      if (getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")) {
+        map.set(String(item.DrugID || ""), item);
+      }
+    });
+
+    if (masterRows.length === 0) {
+      tbody.innerHTML = emptyTableRowHtml(8, "ยังไม่มีรายการยาในระบบ");
+      updateShiftBatchSummary();
+      return;
+    }
+
+    tbody.innerHTML = masterRows.map((item, index) => {
+      const saved = map.get(String(item.DrugID || ""));
+      const ampRemain = saved ? saved.AmpRemain ?? "" : "";
+      const emptyAmp = saved ? saved.EmptyAmp ?? "" : "";
+      const target = Number(item.StockWard || 0);
+      const hasSaved = !!saved;
+      const unit = item.Unit || "หน่วย";
+      const total = isValidNumber(ampRemain) && isValidNumber(emptyAmp) ? Number(ampRemain) + Number(emptyAmp) : null;
+      const diff = total === null ? null : total - target;
+      const statusHtml = hasSaved
+        ? '<span class="badge bg-success-subtle text-success px-2 py-1">● ตรวจแล้ว</span>'
+        : '<span class="badge bg-danger-subtle text-danger px-2 py-1">● ยังไม่นับ</span>';
+      const resultHtml = total === null
+        ? '<span class="text-muted">-</span>'
+        : diff === 0
+          ? '<span class="text-success fw-semibold">✓ ครบถ้วน</span>'
+          : diff < 0
+            ? `<span class="text-danger fw-semibold">✗ ยาขาด ${Math.abs(diff)} ${escapeHtml(unit)}</span>`
+            : `<span class="text-danger fw-semibold">✗ ยาเกิน ${diff} ${escapeHtml(unit)}</span>`;
+
+      return `
+        <tr data-drug-id="${escapeHtml(item.DrugID || "")}" data-target="${escapeHtml(target)}" data-unit="${escapeHtml(unit)}" data-saved="${hasSaved ? "1" : "0"}">
+          <td data-label="สถานะ" class="count-status-cell">${statusHtml}</td>
+          <td data-label="ชื่อยา">
+            <div class="fw-semibold">${escapeHtml(item.DrugName || "-")}</div>
+            <small class="text-muted">${escapeHtml(item.Strength || "")}</small>
+          </td>
+          <td data-label="ยอดเป้าหมาย Stock" class="text-center fw-bold">${escapeHtml(target)}</td>
+          <td data-label="แอมป์ดี (พร้อมใช้)" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm amp-remain-input" value="${escapeHtml(ampRemain)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์ดี แถว ${index + 1}"></td>
+          <td data-label="แอมป์เปล่า" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm empty-amp-input" value="${escapeHtml(emptyAmp)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์เปล่า แถว ${index + 1}"></td>
+          <td data-label="ยอดรวมที่นับได้" class="count-total-cell text-center fw-bold">${total === null ? "-" : escapeHtml(total)}</td>
+          <td data-label="ผลตรวจสอบ" class="count-result-cell text-center">${resultHtml}</td>
+          <td data-label="Action" class="text-center">
+            <button type="button" class="btn btn-primary-custom btn-sm row-save-btn" tabindex="-1">
+              <i class="fas fa-floppy-disk me-1"></i>${hasSaved ? "แก้ไข" : "บันทึก"}
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    if (!tbody.dataset.bound) {
+      tbody.dataset.bound = "1";
+      tbody.addEventListener("input", function (event) {
+        const row = event.target.closest("tr[data-drug-id]");
+        if (!row) return;
+        updateShiftBatchRow(row);
+        updateShiftBatchSummary();
+      });
+
+      tbody.addEventListener("keydown", function (event) {
+        const input = event.target.closest(".amp-remain-input, .empty-amp-input");
+        if (!input || event.key !== "Tab") return;
+
+        const row = input.closest("tr[data-drug-id]");
+        if (!row) return;
+
+        if (input.classList.contains("amp-remain-input") && !event.shiftKey) {
+          event.preventDefault();
+          row.querySelector(".empty-amp-input")?.focus();
+          return;
+        }
+
+        if (input.classList.contains("empty-amp-input") && !event.shiftKey) {
+          event.preventDefault();
+          const rows = getShiftBatchTableRows();
+          const currentIndex = rows.indexOf(row);
+          const nextRow = rows[currentIndex + 1];
+          if (nextRow) {
+            nextRow.querySelector(".amp-remain-input")?.focus();
+          } else {
+            row.querySelector(".row-save-btn")?.focus();
+          }
+          return;
+        }
+
+        if (input.classList.contains("empty-amp-input") && event.shiftKey) {
+          event.preventDefault();
+          row.querySelector(".amp-remain-input")?.focus();
+        }
+      });
+
+      tbody.addEventListener("click", function (event) {
+        const button = event.target.closest(".row-save-btn");
+        if (!button) return;
+        const row = button.closest("tr[data-drug-id]");
+        if (!row) return;
+        if (row.dataset.completed !== "1") {
+          Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบก่อนบันทึกแถวนี้", "warning");
+          return;
+        }
+        saveShiftBatchRows([row]);
+      });
+    }
+
+    const renderedRows = getShiftBatchTableRows();
+    renderedRows.forEach(updateShiftBatchRow);
+    updateShiftBatchSummary();
+
+    const firstInput = tbody.querySelector(".amp-remain-input");
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 0);
+    }
+  };
+
+  async function loadShiftCountPageData() {
+    const selectedDate = document.getElementById("count-date-input")?.value || getBangkokDateString(new Date());
+    const selectedShift = getSelectedShiftValue();
+    const [masterRes, historyRes] = await Promise.all([
+      GASApi.getDrugMaster(),
+      GASApi.getShiftCountHistory()
+    ]);
+
+    window.__shiftCountMasterCache = masterRes.success && Array.isArray(masterRes.data) ? masterRes.data : [];
+    window.__shiftCountHistoryCache = historyRes.success && Array.isArray(historyRes.data) ? historyRes.data : [];
+    window.renderShiftBatchTable(window.__shiftCountMasterCache, window.__shiftCountHistoryCache, selectedDate, selectedShift);
+    window.renderShiftCountTable(window.__shiftCountHistoryCache.filter(item => getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")));
+  }
+
+  window.__reloadShiftCountTable = loadShiftCountPageData;
+
+  window.initShiftCountPage = async function () {
+    const dateInput = document.getElementById("count-date-input");
+    const todayValue = getBangkokDateString(new Date());
+    if (dateInput && !dateInput.value) {
+      dateInput.value = todayValue;
+    }
+
+    const todayLabel = document.getElementById("shift-today-label");
+    if (todayLabel) {
+      todayLabel.textContent = `วันที่ปัจจุบัน: ${formatThaiDate(new Date())}`;
+    }
+
+    const countUserInput = document.getElementById("count-user-input");
+    if (countUserInput) {
+      countUserInput.value = countUserInput.value || getCurrentUserName();
+    }
+
+    const savedShift = localStorage.getItem("shiftcount_shift") || "เช้า";
+    const shiftRadio = document.querySelector(`input[name="shift-select"][value="${savedShift}"]`);
+    if (shiftRadio) {
+      shiftRadio.checked = true;
+    }
+
+    const refreshBtn = document.getElementById("btn-refresh-batch");
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.dataset.bound = "1";
+      refreshBtn.addEventListener("click", async function () {
+        await loadShiftCountPageData();
+      });
+    }
+
+    const saveBtn = document.getElementById("btn-save-batch");
+    if (saveBtn && !saveBtn.dataset.bound) {
+      saveBtn.dataset.bound = "1";
+      saveBtn.addEventListener("click", async function () {
+        const rows = getShiftBatchTableRows();
+        const completedRows = rows.filter(row => row.dataset.completed === "1");
+        const mismatchRows = rows.filter(row => row.dataset.completed === "1" && row.dataset.match !== "1");
+        if (rows.length === 0) {
+          Swal.fire("แจ้งเตือน", "ยังไม่มีรายการยาให้ตรวจนับ", "warning");
+          return;
+        }
+        if (completedRows.length !== rows.length) {
+          Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบทุกแถวก่อนส่งยอด", "warning");
+          return;
+        }
+        if (mismatchRows.length > 0) {
+          Swal.fire("แจ้งเตือน", "ยังมีรายการที่ผลตรวจไม่ตรงกับยอดเป้าหมาย", "warning");
+          return;
+        }
+        await saveShiftBatchRows(rows);
+      });
+    }
+
+    document.querySelectorAll('input[name="shift-select"]').forEach(input => {
+      if (!input.dataset.bound) {
+        input.dataset.bound = "1";
+        input.addEventListener("change", async function () {
+          localStorage.setItem("shiftcount_shift", this.value);
+          await loadShiftCountPageData();
+        });
+      }
+    });
+
+    if (dateInput && !dateInput.dataset.bound) {
+      dateInput.dataset.bound = "1";
+      dateInput.addEventListener("change", async function () {
+        await loadShiftCountPageData();
+      });
+    }
+
+    const countForm = document.getElementById("shift-count-form");
+    if (countForm && !countForm.dataset.bound) {
+      countForm.dataset.bound = "1";
+      countForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+      });
+    }
+
+    await loadShiftCountPageData();
+  };
+
+  function renderDashboardChart(stockList) {
+    const canvas = document.getElementById("stockChart");
+    if (!canvas || typeof Chart === "undefined") return;
+
+    if (window.__dashboardChart && typeof window.__dashboardChart.destroy === "function") {
+      window.__dashboardChart.destroy();
+    }
+
+    const rows = Array.isArray(stockList) ? stockList : [];
+    const topRows = rows
+      .filter(item => parseFloat(item.QtyRemain || 0) > 0)
+      .sort((a, b) => parseFloat(b.QtyRemain || 0) - parseFloat(a.QtyRemain || 0))
+      .slice(0, 8);
+
+    window.__dashboardChart = new Chart(canvas, {
+      type: "bar",
+      data: {
+        labels: topRows.map(item => item.DrugName || "-"),
+        datasets: [{
+          label: "คงเหลือ",
+          data: topRows.map(item => parseFloat(item.QtyRemain || 0)),
+          backgroundColor: "#1A365D"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  function renderExpiryList(alerts) {
+    const tbody = document.getElementById("expiry-list-tbody");
+    if (!tbody) return;
+    tbody.closest("table")?.classList.add("stack-table-mobile");
+    const rows = Array.isArray(alerts) ? alerts : [];
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">ไม่พบข้อมูลใกล้หมดอายุ</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(item => `
+      <tr>
+        <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
+        <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
+        <td data-label="วันคงเหลือ" class="text-center fw-semibold">${escapeHtml(item.DaysLeft ?? "-")}</td>
+      </tr>
+    `).join("");
+  }
+
+  async function loadDashboardData() {
+    const [summaryRes, stockRes, alertRes] = await Promise.all([
+      GASApi.getDashboardData(),
+      GASApi.getDrugStock(),
+      GASApi.checkExpiryAlert()
+    ]);
+
+    if (summaryRes.success && summaryRes.data) {
+      const summary = summaryRes.data;
+      const totalDrugs = document.getElementById("stat-total-drugs");
+      const totalLots = document.getElementById("stat-total-lots");
+      const nearExpiry = document.getElementById("stat-near-expiry");
+      const todayDisbursement = document.getElementById("stat-today-disbursement");
+      if (totalDrugs) totalDrugs.textContent = summary.totalDrugs ?? 0;
+      if (totalLots) totalLots.textContent = summary.totalLots ?? 0;
+      if (nearExpiry) nearExpiry.textContent = summary.nearExpiryCount ?? 0;
+      if (todayDisbursement) todayDisbursement.textContent = summary.todayDisbursements ?? 0;
+    }
+
+    if (stockRes.success) {
+      renderDashboardChart(stockRes.data || []);
+    }
+
+    if (alertRes.success) {
+      renderExpiryList(alertRes.data || []);
+    }
+  }
+
+  window.initDashboardPage = async function () {
+    const refreshBtn = document.getElementById("btn-refresh-dashboard");
+    const shortcutBtn = document.getElementById("btn-shiftcount-shortcut");
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.dataset.bound = "1";
+      refreshBtn.addEventListener("click", async function () {
+        showLoading(true);
+        try {
+          await loadDashboardData();
+        } catch (err) {
+          Swal.fire("เกิดข้อผิดพลาด", err.toString(), "error");
+        } finally {
+          showLoading(false);
+        }
+      });
+    }
+    if (shortcutBtn && !shortcutBtn.dataset.bound) {
+      shortcutBtn.dataset.bound = "1";
+      shortcutBtn.addEventListener("click", function () {
+        window.location.href = "shiftcount.html";
+      });
+    }
+
+    showLoading(true);
+    try {
+      await loadDashboardData();
+    } catch (err) {
+      Swal.fire("เกิดข้อผิดพลาด", err.toString(), "error");
+    } finally {
+      showLoading(false);
     }
   };
 })();
