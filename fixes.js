@@ -7,11 +7,24 @@
 
   function escapeHtml(value) {
     return String(value ?? "")
+      .replace(/\\r\\n|\\n/g, "")
+      .replace(/\r\n|\r|\n/g, " ")
+      .trim()
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
+  }
+
+  function cleanHtmlMarkup(value) {
+    return String(value ?? "")
+      // ลบข้อความ "\r\n" หรือ "\n" ที่หลุดเข้ามาเป็นตัวอักษรจริง (literal escape text)
+      .replace(/\\r\\n|\\n/g, "")
+      // ลบอักขระควบคุมจริง (\r, \n) ที่แทรกอยู่ในโครงสร้าง <table>/<tr>/<td>
+      // ซึ่งเป็นสาเหตุที่ทำให้เกิดช่องว่าง/บรรทัดเปล่าจำนวนมากในตาราง
+      .replace(/\r\n|\r|\n/g, "")
+      .trim();
   }
 
   function formatDateTime(value) {
@@ -155,7 +168,17 @@
       return;
     }
 
-    tbody.innerHTML = list.map(item => `\\r\\n        <tr>\\r\\n          <td><span class="fw-semibold text-primary">${escapeHtml(item.DisburseID || item.DrugName || "-")}</span></td>\\r\\n          <td class="fw-semibold">${escapeHtml(item.DrugName || "-")}</td>\\r\\n          <td><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>\\r\\n          <td>${escapeHtml(item.PatientName || "-")} <span class="text-muted">(${escapeHtml(item.HN || "-")})</span></td>\\r\\n          <td class="text-end fw-bold">${escapeHtml(item.Qty ?? 0)}</td>\\r\\n          <td>${escapeHtml(item.User || "-")}</td>\\r\\n          <td>${formatDateTime(item.Timestamp || item.Date)}</td>\\r\\n        </tr>\\r\\n      `).join("");
+    tbody.innerHTML = cleanHtmlMarkup(list.map(item => `
+        <tr>
+          <td><span class="fw-semibold text-primary">${escapeHtml(item.DisburseID || item.DrugName || "-")}</span></td>
+          <td class="fw-semibold">${escapeHtml(item.DrugName || "-")}</td>
+          <td><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
+          <td>${escapeHtml(item.PatientName || "-")} <span class="text-muted">(${escapeHtml(item.HN || "-")})</span></td>
+          <td class="text-end fw-bold">${escapeHtml(item.Qty ?? 0)}</td>
+          <td>${escapeHtml(item.User || "-")}</td>
+          <td>${formatDateTime(item.Timestamp || item.Date)}</td>
+        </tr>
+      `).join(""));
 
     window.__disbursementTable = $("#disbursement-table").DataTable({
       language: {
@@ -171,7 +194,39 @@
     const placeholder = document.getElementById("navbar-placeholder");
     if (!placeholder) return;
 
-    placeholder.innerHTML = `\\r\\n      <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">\\r\\n        <div class="container-fluid">\\r\\n          <div class="navbar-brand-wrap">\\r\\n            <a class="navbar-brand d-flex align-items-center gap-2" href="dashboard.html">\\r\\n              <img src="icon-app.png" alt="App Icon" class="app-brand-logo">\\r\\n              <span>\\r\\n                <span class="d-block">ระบบตรวจนับและตัดจ่ายยาเสพติด</span>\\r\\n                <small class="fw-normal opacity-75">หอสงฆ์อาพาธ โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</small>\\r\\n              </span>\\r\\n            </a>\\r\\n            <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">\\r\\n              <span class="navbar-toggler-icon"></span>\\r\\n            </button>\\r\\n          </div>\\r\\n          <div class="collapse navbar-collapse" id="navbarNav">\\r\\n            <ul class="navbar-nav me-auto mb-2 mb-lg-0 nav-scroll-x nav-menu-list">\\r\\n              <li class="nav-item"><a class="nav-link" id="nav-dashboard" href="dashboard.html"><i class="fas fa-chart-line me-1"></i> แดชบอร์ด</a></li>\\r\\n              <li class="nav-item"><a class="nav-link" id="nav-stock" href="stock.html"><i class="fas fa-boxes-stacked me-1"></i> รับเข้า</a></li>\\r\\n              <li class="nav-item"><a class="nav-link" id="nav-disbursement" href="disbursement.html"><i class="fas fa-file-medical me-1"></i> ตัดจ่าย</a></li>\\r\\n              <li class="nav-item"><a class="nav-link" id="nav-shiftcount" href="shiftcount.html"><i class="fas fa-clipboard-check me-1"></i> ตรวจนับ</a></li>\\r\\n              <li class="nav-item"><a class="nav-link" id="nav-report" href="report.html"><i class="fas fa-file-pdf me-1"></i> รายงาน</a></li>\\r\\n              <li class="nav-item"><a class="nav-link" id="nav-settings" href="settings.html"><i class="fas fa-sliders me-1"></i> ตั้งค่ารายการ</a></li>\\r\\n            </ul>\\r\\n            <div class="navbar-actions d-flex align-items-center">\\r\\n              <button class="btn btn-outline-light btn-sm" id="btn-config-api">\\r\\n                <i class="fas fa-cog me-1"></i> ตั้งค่า API\\r\\n              </button>\\r\\n            </div>\\r\\n          </div>\\r\\n        </div>\\r\\n      </nav>\\r\\n    `;
+    placeholder.innerHTML = cleanHtmlMarkup(`
+      <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+        <div class="container-fluid">
+          <div class="navbar-brand-wrap">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="dashboard.html">
+              <img src="icon-app.png" alt="App Icon" class="app-brand-logo">
+              <span>
+                <span class="d-block">ระบบตรวจนับและตัดจ่ายยาเสพติด</span>
+                <small class="fw-normal opacity-75">หอสงฆ์อาพาธ โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</small>
+              </span>
+            </a>
+            <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+          </div>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 nav-scroll-x nav-menu-list">
+              <li class="nav-item"><a class="nav-link" id="nav-dashboard" href="dashboard.html"><i class="fas fa-chart-line me-1"></i> แดชบอร์ด</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-stock" href="stock.html"><i class="fas fa-boxes-stacked me-1"></i> รับเข้า</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-disbursement" href="disbursement.html"><i class="fas fa-file-medical me-1"></i> ตัดจ่าย</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-shiftcount" href="shiftcount.html"><i class="fas fa-clipboard-check me-1"></i> ตรวจนับ</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-report" href="report.html"><i class="fas fa-file-pdf me-1"></i> รายงาน</a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-settings" href="settings.html"><i class="fas fa-sliders me-1"></i> ตั้งค่ารายการ</a></li>
+            </ul>
+            <div class="navbar-actions d-flex align-items-center">
+              <button class="btn btn-outline-light btn-sm" id="btn-config-api">
+                <i class="fas fa-cog me-1"></i> ตั้งค่า API
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+    `);
 
     const activeNav = placeholder.querySelector(`#${activePage}`);
     if (activeNav) {
@@ -338,7 +393,7 @@
     if (rows.length === 0) {
       tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">ยังไม่มีข้อมูลรับเข้ายา</td></tr>';
     } else {
-      tbody.innerHTML = rows.map(item => {
+      tbody.innerHTML = cleanHtmlMarkup(rows.map(item => {
         const remain = parseFloat(item.QtyRemain || 0);
         const expiryDate = item.ExpiryDate ? new Date(item.ExpiryDate) : null;
         let statusBadge = '<span class="badge bg-secondary">ปกติ</span>';
@@ -360,8 +415,20 @@
         const fmtExpiry = formatShortDate(item.ExpiryDate);
         const displayDrugName = masterMap.get(String(item.DrugID || ""))?.DrugName || item.DrugName || "-";
 
-        return `\\n          <tr>\\n            <td><span class="fw-semibold text-primary">${escapeHtml(item.StockID || "-")}</span></td>\\n            <td>${escapeHtml(displayDrugName)}</td>\\n            <td><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>\\r\\n            <td>${escapeHtml(fmtExpiry)}</td>\\r\\n            <td>${escapeHtml(item.QtyReceive ?? 0)}</td>\\r\\n            <td class="fw-bold">${escapeHtml(item.QtyRemain ?? 0)}</td>\\r\\n            <td>${escapeHtml(fmtReceive)}</td>\\r\\n            <td>${escapeHtml(item.CreatedBy || "-")}</td>\\r\\n            <td>${statusBadge}</td>\\r\\n          </tr>\\r\\n        `;
-      }).join("");
+        return `
+          <tr>
+            <td><span class="fw-semibold text-primary">${escapeHtml(item.StockID || "-")}</span></td>
+            <td>${escapeHtml(displayDrugName)}</td>
+            <td><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
+            <td>${escapeHtml(fmtExpiry)}</td>
+            <td>${escapeHtml(item.QtyReceive ?? 0)}</td>
+            <td class="fw-bold">${escapeHtml(item.QtyRemain ?? 0)}</td>
+            <td>${escapeHtml(fmtReceive)}</td>
+            <td>${escapeHtml(item.CreatedBy || "-")}</td>
+            <td>${statusBadge}</td>
+          </tr>
+        `;
+      }).join(""));
     }
 
     window.__stockDataTable = $("#stock-table").DataTable({
@@ -487,14 +554,25 @@
     if (rows.length === 0) {
       tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">ยังไม่มีประวัติตรวจนับ</td></tr>';
     } else {
-      tbody.innerHTML = rows.map(item => {
+      tbody.innerHTML = cleanHtmlMarkup(rows.map(item => {
         const isCorrect = item.Result === "ถูกต้อง";
         const resultBadge = isCorrect
           ? '<span class="badge bg-success-subtle text-success px-2 py-1"><i class="fas fa-check me-1"></i>ถูกต้อง</span>'
           : '<span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="fas fa-circle-exclamation me-1"></i>ไม่ตรง</span>';
         const fmtDate = formatShortDate(item.Date);
-        return `\\r\\n          <tr>\\r\\n            <td>${escapeHtml(fmtDate)}</td>\\r\\n            <td><span class="badge bg-primary">${escapeHtml(item.Shift || "-")}</span></td>\\r\\n            <td>${escapeHtml(item.DrugName || "-")}</td>\\r\\n            <td>${escapeHtml(item.AmpRemain ?? 0)}</td>\\r\\n            <td>${escapeHtml(item.EmptyAmp ?? 0)}</td>\\r\\n            <td class="fw-bold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>\\r\\n            <td>${resultBadge}</td>\\r\\n            <td>${escapeHtml(item.User || "-")}</td>\\r\\n          </tr>\\r\\n        `;
-      }).join("");
+        return `
+          <tr>
+            <td>${escapeHtml(fmtDate)}</td>
+            <td><span class="badge bg-primary">${escapeHtml(item.Shift || "-")}</span></td>
+            <td>${escapeHtml(item.DrugName || "-")}</td>
+            <td>${escapeHtml(item.AmpRemain ?? 0)}</td>
+            <td>${escapeHtml(item.EmptyAmp ?? 0)}</td>
+            <td class="fw-bold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
+            <td>${resultBadge}</td>
+            <td>${escapeHtml(item.User || "-")}</td>
+          </tr>
+        `;
+      }).join(""));
     }
 
     window.__shiftCountTable = $("#shift-history-table").DataTable({
@@ -609,7 +687,25 @@
     if (rows.length === 0) {
       tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีรายการยาในระบบ</td></tr>';
     } else {
-      tbody.innerHTML = rows.map(item => `\\r\\n        <tr>\\r\\n          <td><span class="fw-semibold text-primary">${escapeHtml(item.DrugID || "-")}</span></td>\\r\\n          <td class="fw-bold">${escapeHtml(item.DrugName || "-")}</td>\\r\\n          <td>${escapeHtml(item.Strength || "-")}</td>\\r\\n          <td><span class="badge bg-secondary">${escapeHtml(item.Unit || "-")}</span></td>\\r\\n          <td class="text-center fw-bold" style="font-size:1.1rem; color:#10b981;">${escapeHtml(item.StockWard ?? 0)}</td>\\r\\n          <td class="text-center">\\r\\n            <button class="btn btn-warning btn-sm btn-edit-drug"\\r\\n              data-id="${escapeHtml(item.DrugID || "")}"\\r\\n              data-name="${escapeHtml(item.DrugName || "")}"\\r\\n              data-strength="${escapeHtml(item.Strength || "")}"\\r\\n              data-unit="${escapeHtml(item.Unit || "")}"\\r\\n              data-stock="${escapeHtml(item.StockWard ?? 0)}">\\r\\n              <i class="fas fa-edit me-1"></i>แก้ไข\\r\\n            </button>\\r\\n          </td>\\r\\n        </tr>\\r\\n      `).join("");
+      tbody.innerHTML = cleanHtmlMarkup(rows.map(item => `
+        <tr>
+          <td><span class="fw-semibold text-primary">${escapeHtml(item.DrugID || "-")}</span></td>
+          <td class="fw-bold">${escapeHtml(item.DrugName || "-")}</td>
+          <td>${escapeHtml(item.Strength || "-")}</td>
+          <td><span class="badge bg-secondary">${escapeHtml(item.Unit || "-")}</span></td>
+          <td class="text-center fw-bold" style="font-size:1.1rem; color:#10b981;">${escapeHtml(item.StockWard ?? 0)}</td>
+          <td class="text-center">
+            <button class="btn btn-warning btn-sm btn-edit-drug"
+              data-id="${escapeHtml(item.DrugID || "")}"
+              data-name="${escapeHtml(item.DrugName || "")}"
+              data-strength="${escapeHtml(item.Strength || "")}"
+              data-unit="${escapeHtml(item.Unit || "")}"
+              data-stock="${escapeHtml(item.StockWard ?? 0)}">
+              <i class="fas fa-edit me-1"></i>แก้ไข
+            </button>
+          </td>
+        </tr>
+      `).join(""));
     }
 
     document.querySelectorAll(".btn-edit-drug").forEach(btn => {
@@ -737,10 +833,37 @@
 
     const rowsHtml = data.map(item => {
       const isCorrect = item.Result === "ถูกต้อง";
-      return `\\r\\n        <tr>\\r\\n          <td class="text-center">${escapeHtml(formatShortDate(item.Date))}</td>\\r\\n          <td class="text-center"><span class="badge bg-primary">${escapeHtml(item.Shift || "-")}</span></td>\\r\\n          <td>${escapeHtml(item.DrugName || "-")}</td>\\r\\n          <td class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>\\r\\n          <td class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>\\r\\n          <td class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>\\r\\n          <td class="text-center ${isCorrect ? "text-success" : "text-danger fw-bold"}">${escapeHtml(item.Result || "-")}</td>\\r\\n          <td>${escapeHtml(item.User || "-")}</td>\\r\\n        </tr>\\r\\n      `;
+      return `
+        <tr>
+          <td class="text-center">${escapeHtml(formatShortDate(item.Date))}</td>
+          <td class="text-center"><span class="badge bg-primary">${escapeHtml(item.Shift || "-")}</span></td>
+          <td>${escapeHtml(item.DrugName || "-")}</td>
+          <td class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>
+          <td class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>
+          <td class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
+          <td class="text-center ${isCorrect ? "text-success" : "text-danger fw-bold"}">${escapeHtml(item.Result || "-")}</td>
+          <td>${escapeHtml(item.User || "-")}</td>
+        </tr>
+      `;
     }).join("");
 
-    contentDiv.innerHTML = `\\r\\n      <table class="table table-bordered table-sm w-100">\\r\\n        <thead style="background-color: #cbd5e1;">\\r\\n          <tr class="text-center">\\r\\n            <th>วันที่</th>\\r\\n            <th>เวร</th>\\r\\n            <th>ชื่อยา</th>\\r\\n            <th>แอมป์ดี</th>\\r\\n            <th>แอมป์เปล่า</th>\\r\\n            <th>ยอดรวม</th>\\r\\n            <th>ผลตรวจสอบ</th>\\r\\n            <th>ผู้บันทึก</th>\\r\\n          </tr>\\r\\n        </thead>\\r\\n        <tbody>${rowsHtml}</tbody>\\r\\n      </table>\\r\\n    `;
+    contentDiv.innerHTML = cleanHtmlMarkup(`
+      <table class="table table-bordered table-sm w-100">
+        <thead style="background-color: #cbd5e1;">
+          <tr class="text-center">
+            <th>วันที่</th>
+            <th>เวร</th>
+            <th>ชื่อยา</th>
+            <th>แอมป์ดี</th>
+            <th>แอมป์เปล่า</th>
+            <th>ยอดรวม</th>
+            <th>ผลตรวจสอบ</th>
+            <th>ผู้บันทึก</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `);
   };
 
   window.renderDisburseReportPreview = function (data, drugName) {
@@ -758,9 +881,36 @@
       return;
     }
 
-    const rowsHtml = data.map(item => `\\r\\n      <tr>\\r\\n        <td class="text-center">${escapeHtml(formatShortDate(item.Date))}</td>\\r\\n        <td>${escapeHtml(item.DrugName || "-")}</td>\\r\\n        <td class="text-center"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>\\r\\n        <td>${escapeHtml(item.PatientName || "-")}</td>\\r\\n        <td class="text-center">${escapeHtml(item.HN || "-")}</td>\\r\\n        <td class="text-end fw-semibold">${escapeHtml(item.Qty ?? 0)}</td>\\r\\n        <td>${escapeHtml(item.User || "-")}</td>\\r\\n        <td class="text-center">${escapeHtml(formatDateTime(item.Timestamp))}</td>\\r\\n      </tr>\\r\\n    `).join("");
+    const rowsHtml = data.map(item => `
+      <tr>
+        <td class="text-center">${escapeHtml(formatShortDate(item.Date))}</td>
+        <td>${escapeHtml(item.DrugName || "-")}</td>
+        <td class="text-center"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
+        <td>${escapeHtml(item.PatientName || "-")}</td>
+        <td class="text-center">${escapeHtml(item.HN || "-")}</td>
+        <td class="text-end fw-semibold">${escapeHtml(item.Qty ?? 0)}</td>
+        <td>${escapeHtml(item.User || "-")}</td>
+        <td class="text-center">${escapeHtml(formatDateTime(item.Timestamp))}</td>
+      </tr>
+    `).join("");
 
-    contentDiv.innerHTML = `\\r\\n      <table class="table table-bordered table-sm w-100">\\r\\n        <thead style="background-color: #cbd5e1;">\\r\\n          <tr class="text-center">\\r\\n            <th>วันที่จ่าย</th>\\r\\n            <th>ชื่อยา</th>\\r\\n            <th>LOT</th>\\r\\n            <th>ชื่อคนไข้</th>\\r\\n            <th>HN</th>\\r\\n            <th>จำนวนจ่าย</th>\\r\\n            <th>ผู้จ่าย</th>\\r\\n            <th>เวลาบันทึก</th>\\r\\n          </tr>\\r\\n        </thead>\\r\\n        <tbody>${rowsHtml}</tbody>\\r\\n      </table>\\r\\n    `;
+    contentDiv.innerHTML = cleanHtmlMarkup(`
+      <table class="table table-bordered table-sm w-100">
+        <thead style="background-color: #cbd5e1;">
+          <tr class="text-center">
+            <th>วันที่จ่าย</th>
+            <th>ชื่อยา</th>
+            <th>LOT</th>
+            <th>ชื่อคนไข้</th>
+            <th>HN</th>
+            <th>จำนวนจ่าย</th>
+            <th>ผู้จ่าย</th>
+            <th>เวลาบันทึก</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `);
   };
 
   window.initReportPage = async function () {
@@ -889,12 +1039,18 @@
     }
   };
   function getBangkokDateString(date) {
+    // ป้องกัน RangeError: Invalid time value เมื่อ date เป็นค่าว่าง, null,
+    // หรือสตริงวันที่ที่แปลงเป็น Date ไม่ได้ (ข้อมูลจาก Sheet ผิดรูปแบบ)
+    let d = date instanceof Date ? date : new Date(date || Date.now());
+    if (Number.isNaN(d.getTime())) {
+      d = new Date();
+    }
     return new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Bangkok",
       year: "numeric",
       month: "2-digit",
       day: "2-digit"
-    }).format(date || new Date());
+    }).format(d);
   }
 
   function formatThaiDate(value) {
@@ -979,7 +1135,17 @@
       return;
     }
 
-    tbody.innerHTML = list.map(item => `\\r\\n      <tr>\\r\\n        <td data-label="รหัสรายการ"><span class="fw-semibold text-primary">${escapeHtml(item.DisburseID || item.DrugName || "-")}</span></td>\\r\\n        <td data-label="ชื่อยา" class="fw-semibold">${escapeHtml(item.DrugName || "-")}</td>\\r\\n        <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>\\r\\n        <td data-label="ชื่อผู้ป่วย">${escapeHtml(item.PatientName || "-")} <span class="text-muted">(${escapeHtml(item.HN || "-")})</span></td>\\r\\n        <td data-label="จำนวน" class="text-end fw-bold">${escapeHtml(item.Qty ?? 0)}</td>\\r\\n        <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>\\r\\n        <td data-label="เวลา">${formatThaiDateTime(item.Timestamp || item.Date)}</td>\\r\\n      </tr>\\r\\n    `).join("");
+    tbody.innerHTML = cleanHtmlMarkup(list.map(item => `
+      <tr>
+        <td data-label="รหัสรายการ"><span class="fw-semibold text-primary">${escapeHtml(item.DisburseID || item.DrugName || "-")}</span></td>
+        <td data-label="ชื่อยา" class="fw-semibold">${escapeHtml(item.DrugName || "-")}</td>
+        <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
+        <td data-label="ชื่อผู้ป่วย">${escapeHtml(item.PatientName || "-")} <span class="text-muted">(${escapeHtml(item.HN || "-")})</span></td>
+        <td data-label="จำนวน" class="text-end fw-bold">${escapeHtml(item.Qty ?? 0)}</td>
+        <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>
+        <td data-label="เวลา">${formatThaiDateTime(item.Timestamp || item.Date)}</td>
+      </tr>
+    `).join(""));
 
     window.__disbursementTable = $("#disbursement-table").DataTable({
       language: {
@@ -1004,7 +1170,7 @@
       return;
     }
 
-    tbody.innerHTML = rows.map(item => {
+    tbody.innerHTML = cleanHtmlMarkup(rows.map(item => {
       const remain = parseFloat(item.QtyRemain || 0);
       const expiryDate = item.ExpiryDate ? new Date(item.ExpiryDate) : null;
       let statusBadge = '<span class="badge bg-secondary">ปกติ</span>';
@@ -1022,8 +1188,20 @@
         }
       }
 
-      return `\\r\\n        <tr>\\r\\n          <td data-label="รหัสสต็อก"><span class="fw-semibold text-primary">${escapeHtml(item.StockID || "-")}</span></td>\\r\\n          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>\\r\\n          <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>\\r\\n          <td data-label="วันหมดอายุ">${escapeHtml(formatThaiDate(item.ExpiryDate))}</td>\\r\\n          <td data-label="รับเข้า">${escapeHtml(item.QtyReceive ?? 0)}</td>\\r\\n          <td data-label="คงเหลือ" class="fw-bold">${escapeHtml(item.QtyRemain ?? 0)}</td>\\r\\n          <td data-label="วันที่รับเข้า">${escapeHtml(formatThaiDate(item.ReceiveDate))}</td>\\r\\n          <td data-label="ผู้บันทึก">${escapeHtml(item.CreatedBy || "-")}</td>\\r\\n          <td data-label="สถานะ">${statusBadge}</td>\\r\\n        </tr>\\r\\n      `;
-    }).join("");
+      return `
+        <tr>
+          <td data-label="รหัสสต็อก"><span class="fw-semibold text-primary">${escapeHtml(item.StockID || "-")}</span></td>
+          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
+          <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
+          <td data-label="วันหมดอายุ">${escapeHtml(formatThaiDate(item.ExpiryDate))}</td>
+          <td data-label="รับเข้า">${escapeHtml(item.QtyReceive ?? 0)}</td>
+          <td data-label="คงเหลือ" class="fw-bold">${escapeHtml(item.QtyRemain ?? 0)}</td>
+          <td data-label="วันที่รับเข้า">${escapeHtml(formatThaiDate(item.ReceiveDate))}</td>
+          <td data-label="ผู้บันทึก">${escapeHtml(item.CreatedBy || "-")}</td>
+          <td data-label="สถานะ">${statusBadge}</td>
+        </tr>
+      `;
+    }).join(""));
 
     window.__stockDataTable = $("#stock-table").DataTable({
       language: {
@@ -1046,7 +1224,25 @@
       return;
     }
 
-    tbody.innerHTML = rows.map(item => `\\r\\n      <tr>\\r\\n        <td data-label="รหัสยา"><span class="fw-semibold text-primary">${escapeHtml(item.DrugID || "-")}</span></td>\\r\\n        <td data-label="ชื่อยา" class="fw-bold">${escapeHtml(item.DrugName || "-")}</td>\\r\\n        <td data-label="ความแรง">${escapeHtml(item.Strength || "-")}</td>\\r\\n        <td data-label="หน่วย"><span class="badge bg-secondary">${escapeHtml(item.Unit || "-")}</span></td>\\r\\n        <td data-label="Stock Ward" class="text-center fw-bold" style="font-size:1.05rem; color:#10b981;">${escapeHtml(item.StockWard ?? 0)}</td>\\r\\n        <td data-label="จัดการ" class="text-center">\\r\\n          <button class="btn btn-warning btn-sm btn-edit-drug"\\r\\n            data-id="${escapeHtml(item.DrugID || "")}"\\r\\n            data-name="${escapeHtml(item.DrugName || "")}"\\r\\n            data-strength="${escapeHtml(item.Strength || "")}"\\r\\n            data-unit="${escapeHtml(item.Unit || "")}"\\r\\n            data-stock="${escapeHtml(item.StockWard ?? 0)}">\\r\\n            <i class="fas fa-edit me-1"></i>แก้ไข\\r\\n          </button>\\r\\n        </td>\\r\\n      </tr>\\r\\n    `).join("");
+    tbody.innerHTML = cleanHtmlMarkup(rows.map(item => `
+      <tr>
+        <td data-label="รหัสยา"><span class="fw-semibold text-primary">${escapeHtml(item.DrugID || "-")}</span></td>
+        <td data-label="ชื่อยา" class="fw-bold">${escapeHtml(item.DrugName || "-")}</td>
+        <td data-label="ความแรง">${escapeHtml(item.Strength || "-")}</td>
+        <td data-label="หน่วย"><span class="badge bg-secondary">${escapeHtml(item.Unit || "-")}</span></td>
+        <td data-label="Stock Ward" class="text-center fw-bold" style="font-size:1.05rem; color:#10b981;">${escapeHtml(item.StockWard ?? 0)}</td>
+        <td data-label="จัดการ" class="text-center">
+          <button class="btn btn-warning btn-sm btn-edit-drug"
+            data-id="${escapeHtml(item.DrugID || "")}"
+            data-name="${escapeHtml(item.DrugName || "")}"
+            data-strength="${escapeHtml(item.Strength || "")}"
+            data-unit="${escapeHtml(item.Unit || "")}"
+            data-stock="${escapeHtml(item.StockWard ?? 0)}">
+            <i class="fas fa-edit me-1"></i>แก้ไข
+          </button>
+        </td>
+      </tr>
+    `).join(""));
 
     document.querySelectorAll(".btn-edit-drug").forEach(btn => {
       btn.addEventListener("click", function () {
@@ -1248,10 +1444,21 @@
       return;
     }
 
-    tbody.innerHTML = rows.map(item => {
+    tbody.innerHTML = cleanHtmlMarkup(rows.map(item => {
       const isCorrect = String(item.Result || "") === "ถูกต้อง";
-      return `\\r\\n        <tr>\\r\\n          <td data-label="วันที่">${escapeHtml(formatThaiDate(item.Date))}</td>\\r\\n          <td data-label="เวร"><span class="badge bg-primary">${escapeHtml(getShiftLabel(item.Shift))}</span></td>\\r\\n          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>\\r\\n          <td data-label="แอมป์ดี" class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>\\r\\n          <td data-label="แอมป์เปล่า" class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>\\r\\n          <td data-label="ยอดรวม" class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>\\r\\n          <td data-label="ผลตรวจสอบ" class="text-center ${isCorrect ? "text-success fw-semibold" : "text-danger fw-semibold"}">${isCorrect ? "โ“ ครบถ้วน" : "โ— ไม่ตรง"}</td>\\r\\n          <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>\\r\\n        </tr>\\r\\n      `;
-    }).join("");
+      return `
+        <tr>
+          <td data-label="วันที่">${escapeHtml(formatThaiDate(item.Date))}</td>
+          <td data-label="เวร"><span class="badge bg-primary">${escapeHtml(getShiftLabel(item.Shift))}</span></td>
+          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
+          <td data-label="แอมป์ดี" class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>
+          <td data-label="แอมป์เปล่า" class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>
+          <td data-label="ยอดรวม" class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
+          <td data-label="ผลตรวจสอบ" class="text-center ${isCorrect ? "text-success fw-semibold" : "text-danger fw-semibold"}">${isCorrect ? "✓ ครบถ้วน" : "✗ ไม่ตรง"}</td>
+          <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>
+        </tr>
+      `;
+    }).join(""));
 
     window.__shiftCountHistoryTable = $("#shift-history-table").DataTable({
       language: {
@@ -1282,7 +1489,7 @@
       return;
     }
 
-    tbody.innerHTML = masterRows.map((item, index) => {
+    tbody.innerHTML = cleanHtmlMarkup(masterRows.map((item, index) => {
       const saved = map.get(String(item.DrugID || ""));
       const ampRemain = saved ? saved.AmpRemain ?? "" : "";
       const emptyAmp = saved ? saved.EmptyAmp ?? "" : "";
@@ -1302,8 +1509,26 @@
             ? `<span class="text-danger fw-semibold">✗ ยาขาด ${Math.abs(diff)} ${escapeHtml(unit)}</span>`
             : `<span class="text-danger fw-semibold">✗ ยาเกิน ${diff} ${escapeHtml(unit)}</span>`;
 
-      return `\\r\\n        <tr data-drug-id="${escapeHtml(item.DrugID || "")}" data-target="${escapeHtml(target)}" data-unit="${escapeHtml(unit)}" data-saved="${hasSaved ? "1" : "0"}">\\r\\n          <td data-label="สถานะ" class="count-status-cell">${statusHtml}</td>\\r\\n          <td data-label="ชื่อยา">\\r\\n            <div class="fw-semibold">${escapeHtml(item.DrugName || "-")}</div>\\r\\n            <small class="text-muted">${escapeHtml(item.Strength || "")}</small>\\r\\n          </td>\\r\\n          <td data-label="ยอดเป้าหมาย Stock" class="text-center fw-bold">${escapeHtml(target)}</td>\\r\\n          <td data-label="แอมป์ดี (พร้อมใช้)" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm amp-remain-input" value="${escapeHtml(ampRemain)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์ดี แถว ${index + 1}"></td>\\r\\n          <td data-label="แอมป์เปล่า" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm empty-amp-input" value="${escapeHtml(emptyAmp)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์เปล่า แถว ${index + 1}"></td>\\r\\n          <td data-label="ยอดรวมที่นับได้" class="count-total-cell text-center fw-bold">${total === null ? "-" : escapeHtml(total)}</td>\\r\\n          <td data-label="ผลตรวจสอบ" class="count-result-cell text-center">${resultHtml}</td>\\r\\n          <td data-label="Action" class="text-center">\\r\\n            <button type="button" class="btn btn-primary-custom btn-sm row-save-btn" tabindex="-1">\\r\\n              <i class="fas fa-floppy-disk me-1"></i>${hasSaved ? "แก้ไข" : "บันทึก"}\\r\\n            </button>\\r\\n          </td>\\r\\n        </tr>\\r\\n      `;
-    }).join("");
+      return `
+        <tr data-drug-id="${escapeHtml(item.DrugID || "")}" data-target="${escapeHtml(target)}" data-unit="${escapeHtml(unit)}" data-saved="${hasSaved ? "1" : "0"}">
+          <td data-label="สถานะ" class="count-status-cell">${statusHtml}</td>
+          <td data-label="ชื่อยา">
+            <div class="fw-semibold">${escapeHtml(item.DrugName || "-")}</div>
+            <small class="text-muted">${escapeHtml(item.Strength || "")}</small>
+          </td>
+          <td data-label="ยอดเป้าหมาย Stock" class="text-center fw-bold">${escapeHtml(target)}</td>
+          <td data-label="แอมป์ดี (พร้อมใช้)" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm amp-remain-input" value="${escapeHtml(ampRemain)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์ดี แถว ${index + 1}"></td>
+          <td data-label="แอมป์เปล่า" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm empty-amp-input" value="${escapeHtml(emptyAmp)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์เปล่า แถว ${index + 1}"></td>
+          <td data-label="ยอดรวมที่นับได้" class="count-total-cell text-center fw-bold">${total === null ? "-" : escapeHtml(total)}</td>
+          <td data-label="ผลตรวจสอบ" class="count-result-cell text-center">${resultHtml}</td>
+          <td data-label="Action" class="text-center">
+            <button type="button" class="btn btn-primary-custom btn-sm row-save-btn" tabindex="-1">
+              <i class="fas fa-floppy-disk me-1"></i>${hasSaved ? "แก้ไข" : "บันทึก"}
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join(""));
 
     if (!tbody.dataset.bound) {
       tbody.dataset.bound = "1";
@@ -1546,7 +1771,13 @@
       return;
     }
 
-    tbody.innerHTML = rows.map(item => `\\r\\n      <tr>\\r\\n        <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>\\r\\n        <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>\\r\\n        <td data-label="วันคงเหลือ" class="text-center fw-semibold">${escapeHtml(item.DaysLeft ?? "-")}</td>\\r\\n      </tr>\\r\\n    `).join("");
+    tbody.innerHTML = cleanHtmlMarkup(rows.map(item => `
+      <tr>
+        <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
+        <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
+        <td data-label="วันคงเหลือ" class="text-center fw-semibold">${escapeHtml(item.DaysLeft ?? "-")}</td>
+      </tr>
+    `).join(""));
   }
 
   async function loadDashboardData() {
@@ -1620,5 +1851,3 @@
     }
   };
 })();
-
-
