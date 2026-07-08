@@ -225,9 +225,15 @@
           <div class="navbar-brand-wrap">
             <a class="navbar-brand d-flex align-items-center gap-2" href="dashboard.html">
               <img src="icon-app.png" alt="App Icon" class="app-brand-logo">
-              <span>
-                <span class="d-block">ระบบตรวจนับและตัดจ่ายยาเสพติด</span>
-                <small class="fw-normal opacity-75">หอสงฆ์อาพาธ โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</small>
+              <span class="navbar-brand-text">
+                <span class="d-block brand-title">ระบบตรวจนับและตัดจ่ายยาเสพติด</span>
+                <span class="ward-context-pill" role="status" aria-label="กำลังใช้งานหอผู้ป่วย หอสงฆ์อาพาธ">
+                  <span class="ward-context-pill__label">
+                    <i class="fas fa-hospital-user me-1"></i> หอผู้ป่วยที่ใช้งาน
+                  </span>
+                  <span class="ward-context-pill__name">หอสงฆ์อาพาธ</span>
+                </span>
+                <small class="fw-normal opacity-75 brand-subtitle">โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</small>
               </span>
             </a>
             <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
