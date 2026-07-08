@@ -1,203 +1,141 @@
 /**
- * app.js
- * จัดการ logic ของแต่ละหน้าจอ จัดการการเชื่อมประสาน UI และประสานงานกับ API
+ * api.js
+ * คลาสหรือฟังก์ชันจัดการติดต่อสื่อสารกับ Google Apps Script Web App API
  */
 
-// แสดงและซ่อน Spinner
-function showLoading(show) {
-  const overlay = document.getElementById("loading-spinner-overlay");
-  if (overlay) {
-    if (show) overlay.classList.remove("d-none");
-    else overlay.classList.add("d-none");
-  }
-}
+const GASApi = {
+  // ดึงค่า URL ของ Web App จาก LocalStorage
+  getApiUrl: function() {
+    return localStorage.getItem("GAS_API_URL") || "";
+  },
 
-// แสดง Toast Notification แบบรวดเร็ว
-function showToast(title, icon = "success") {
-  Swal.fire({
-    title: title,
-    icon: icon,
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true
-  });
-}
+  // ตั้งค่า URL ของ Web App
+  setApiUrl: function(url) {
+    localStorage.setItem("GAS_API_URL", url.trim());
+  },
 
-// ตรวจจับหน้าปัจจุบัน
-const currentPage = window.location.pathname.split("/").pop();
-
-document.addEventListener("DOMContentLoaded", async function() {
-  // 1. ตรวจสอบการตั้งค่า API URL
-  if (currentPage !== "index.html") {
-    if (!GASApi.getApiUrl()) {
-      const { value: url } = await Swal.fire({
-        title: 'กำหนดค่าระบบ',
-        text: 'กรุณากรอก Google Apps Script Web App API URL เพื่อเปิดใช้งานระบบ',
-        input: 'text',
-        inputPlaceholder: 'https://script.google.com/macros/s/.../exec',
-        allowOutsideClick: false,
-        confirmButtonText: 'บันทึก',
-        inputValidator: (value) => {
-          if (!value) {
-            return 'กรุณากรอก URL ก่อนเริ่มต้นใช้งาน'
-          }
-        }
-      });
-      if (url) {
-        GASApi.setApiUrl(url);
-        showToast("บันทึก API URL สำเร็จ");
-      }
+  // ฟังก์ชันกลางสำหรับการยิง API
+  request: async function(action, method = "GET", data = null) {
+    const apiUrl = this.getApiUrl();
+    if (!apiUrl) {
+      throw new Error("ยังไม่ได้กำหนดค่า Google Apps Script Web App API URL");
     }
 
-    // โหลดแถบเมนู
-    await loadNavbar();
-    
-    // ตั้งค่าผู้ปฏิบัติงานอัตโนมัติในฟอร์มต่างๆ (สามารถแก้ไขได้)
-    const defaultUser = "เจ้าหน้าที่เวร";
-    const createdByInput = document.getElementById("created-by-input");
-    if (createdByInput) createdByInput.value = defaultUser;
-    const disburseUserInput = document.getElementById("disburse-user-input");
-    if (disburseUserInput) disburseUserInput.value = defaultUser;
-    const countUserInput = document.getElementById("count-user-input");
-    if (countUserInput) countUserInput.value = defaultUser;
-  }
-
-  // 2. ลงทะเบียน Service Worker สำหรับ PWA
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('Service Worker registered successfully!', reg.scope))
-      .catch(err => console.error('Service Worker registration failed:', err));
-
-    // รับ message จาก service worker (สำหรับ in-app notifications)
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      const msg = event.data;
-      if (!msg) return;
-      if (msg.type === 'push' && msg.payload) {
-        const title = msg.payload.title || 'ข้อความใหม่';
-        const body = msg.payload.body || msg.payload.message || '';
-        // ใช้ showToast ที่มีอยู่ (Swal) เพื่อแสดงข้อความแบบ in-app (ไม่มี system popup)
-        showToast(`${title}: ${body}`, 'info');
+    let url = apiUrl;
+    let options = {
+      method: "POST", // GAS Web App แนะนำให้ส่งด้วย POST เพื่อป้องกันการติด Redirect และ CORS สำหรับข้อมูลขนาดใหญ่
+      mode: "cors",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8" // จำเป็นต้องส่งเป็น text/plain สำหรับ GAS เพื่อเลี่ยง CORS preflight options
       }
-    });
-  }
+    };
 
-  // 3. เรียกใช้งานระบบตามหน้าจอ
-  try {
-    if (currentPage === "login.html") {
-      if (typeof window.initLoginPage === "function") window.initLoginPage();
-    } else if (currentPage === "dashboard.html") {
-      if (typeof window.initDashboardPage === "function") await window.initDashboardPage();
-    } else if (currentPage === "stock.html") {
-      if (typeof window.initStockPage === "function") await window.initStockPage();
-    } else if (currentPage === "disbursement.html") {
-      if (typeof window.initDisbursementPage === "function") await window.initDisbursementPage();
-    } else if (currentPage === "shiftcount.html") {
-      if (typeof window.initShiftCountPage === "function") await window.initShiftCountPage();
-    } else if (currentPage === "report.html") {
-      if (typeof window.initReportPage === "function") await window.initReportPage();
-    } else if (currentPage === "settings.html") {
-      if (typeof window.initSettingsPage === "function") await window.initSettingsPage();
-    }
-  } catch (error) {
-    console.error("เกิดข้อผิดพลาดในการโหลดหน้าจอ:", error);
-    showToast("ไม่สามารถเรียกข้อมูลจากระบบ: " + error.message, "error");
-  }
-});
-
-/**
- * ----------------------------------------------------
- * หน้า: LOGIN.HTML
- * ----------------------------------------------------
- */
-function initLoginPage() {
-  const loginForm = document.getElementById("login-form");
-  const initDbBtn = document.getElementById("btn-init-db");
-  const apiUrlInput = document.getElementById("api-url-input");
-
-  // ฟอร์มเข้าสู่ระบบ
-  if (loginForm) {
-    loginForm.addEventListener("submit", async function(e) {
-      e.preventDefault();
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const apiUrl = apiUrlInput.value.trim();
-
-      if (!apiUrl) {
-        Swal.fire("แจ้งเตือน", "กรุณากรอก Google Apps Script Web App API URL ก่อนเข้าใช้งาน", "warning");
-        return;
-      }
-
-      GASApi.setApiUrl(apiUrl);
-      showLoading(true);
-
-      try {
-        const response = await GASApi.login(username, password);
-        showLoading(false);
-        
-        if (response.success) {
-          localStorage.setItem("user", JSON.stringify(response.user));
-          Swal.fire({
-            icon: 'success',
-            title: 'เข้าสู่ระบบสำเร็จ',
-            text: 'ยินดีต้อนรับ ' + response.user.name,
-            timer: 1500,
-            showConfirmButton: false
-          }).then(() => {
-            window.location.replace("dashboard.html");
-          });
-        } else {
-          Swal.fire("ข้อผิดพลาด", response.message, "error");
+    // แปลงการร้องขอสำหรับ Web App
+    if (method === "GET") {
+      url += (url.includes("?") ? "&" : "?") + "action=" + action;
+      if (data) {
+        for (let key in data) {
+          url += `&${key}=${encodeURIComponent(data[key])}`;
         }
-      } catch (err) {
-        showLoading(false);
-        Swal.fire("เข้าสู่ระบบล้มเหลว", "ไม่สามารถติดต่อ API ได้ กรุณาตรวจสอบความถูกต[...]");
       }
-    });
-  }
-
-  // ปุ่มเริ่มต้นฐานข้อมูลใหม่
-  if (initDbBtn) {
-    initDbBtn.addEventListener("click", async function() {
-      const apiUrl = apiUrlInput.value.trim();
-      if (!apiUrl) {
-        Swal.fire("แจ้งเตือน", "กรุณากรอก Google Apps Script Web App API URL ก่อนเริ่มใช้งาน", "warning");
-        return;
-      }
-
-      GASApi.setApiUrl(apiUrl);
-      
-      Swal.fire({
-        title: 'สร้างฐานข้อมูลใหม่?',
-        text: 'ระบบจะเข้าไปสร้างชีตที่จำเป็นใน Spreadsheet และตั้งค่าเริ่มต้นให้คุณโ [...]',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'ตกลง, ดำเนินการ',
-        cancelButtonText: 'ยกเลิก'
-      }).then(async (result) => {
-        if (result.isConfirmed) {
-          showLoading(true);
-          try {
-            const response = await GASApi.initSystem();
-            showLoading(false);
-            if (response.success) {
-              Swal.fire({
-                title: 'เริ่มต้นระบบสำเร็จ!',
-                html: `ระบบได้ทำการสร้างตารางเก็บข้อมูลยาเสพติดให้โทษเรียบร้อยแล้[...]`,
-                icon: 'success'
-              });
-            } else {
-              Swal.fire("ล้มเหลว", response.message, "error");
-            }
-          } catch (err) {
-            showLoading(false);
-            Swal.fire("เชื่อมต่อล้มเหลว", err.toString(), "error");
-          }
-        }
+      options = {
+        method: "GET",
+        mode: "cors"
+      };
+    } else {
+      // POST
+      options.body = JSON.stringify({
+        action: action,
+        data: data,
+        username: data?.username,
+        password: data?.password
       });
-    });
-  }
-}
+    }
 
-/* ... rest of app.js remains unchanged ... */
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error("HTTP error! status: " + response.status);
+      }
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error("API Request Failed:", error);
+      throw error;
+    }
+  },
+
+  // 1. ฟังก์ชันเริ่มต้นระบบตารางข้อมูล
+  initSystem: async function() {
+    return await this.request("initSystem", "POST");
+  },
+
+  // 2. ฟังก์ชันล็อกอินเข้าระบบ
+  login: async function(username, password) {
+    return await this.request("login", "POST", { username, password });
+  },
+
+  // 3. ฟังก์ชันรับยาเข้าสต็อก
+  addDrugStock: async function(data) {
+    return await this.request("addDrugStock", "POST", data);
+  },
+
+  // 4. ฟังก์ชันดึงสต็อกยาเสพติดทั้งหมด
+  getDrugStock: async function() {
+    return await this.request("getDrugStock", "GET");
+  },
+
+  // 5. ฟังก์ชันตัดจ่ายยาเสพติด
+  disburseDrug: async function(data) {
+    return await this.request("disburseDrug", "POST", data);
+  },
+
+  // 5.1 ชื่อเรียกแบบใหม่ให้สอดคล้องกับฝั่งหน้าเว็บ
+  saveDisbursement: async function(data) {
+    return await this.request("disburseDrug", "POST", data);
+  },
+
+  // 6. ฟังก์ชันบันทึกตรวจนับเวร
+  saveShiftCount: async function(data) {
+    return await this.request("saveShiftCount", "POST", data);
+  },
+
+  // 7. ดึงประวัติการตรวจนับ
+  getShiftCountHistory: async function() {
+    return await this.request("getShiftCountHistory", "GET");
+  },
+
+  // 8. ดึงข้อมูล Dashboard สรุป
+  getDashboardData: async function() {
+    return await this.request("getDashboardData", "GET");
+  },
+
+  // 9. ดึงประวัติแจ้งเตือนยาใกล้หมดอายุ
+  checkExpiryAlert: async function() {
+    return await this.request("checkExpiryAlert", "GET");
+  },
+
+  // 10. รายงานประวัติการตัดจ่าย
+  getDisbursementReport: async function(drugID = "") {
+    return await this.request("getDisbursementReport", "GET", { drugID });
+  },
+
+  // 11. รายงานตรวจนับประจำเวรรายเดือน
+  getMonthlyShiftCountReport: async function(yearMonth) {
+    return await this.request("getMonthlyShiftCountReport", "GET", { yearMonth });
+  },
+
+  // 12. ดึงรายการยาหลัก
+  getDrugMaster: async function() {
+    return await this.request("getDrugMaster", "GET");
+  },
+
+  // 13. บันทึกหรืออัปเดตรายการยาหลัก
+  updateDrugMaster: async function(data) {
+    return await this.request("updateDrugMaster", "POST", data);
+  },
+
+  saveShiftCountBatch: async function(data) {
+    return await this.request("saveShiftCountBatch", "POST", data);
+  }
+};
