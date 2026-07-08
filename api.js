@@ -3,7 +3,7 @@
  * คลาสหรือฟังก์ชันจัดการติดต่อสื่อสารกับ Google Apps Script Web App API
  */
 
-window.GASApi = window.GASApi || {
+var GASApi = window.GASApi = window.GASApi || {
   // ดึงค่า URL ของ Web App จาก LocalStorage
   getApiUrl: function() {
     return localStorage.getItem("GAS_API_URL") || "";
