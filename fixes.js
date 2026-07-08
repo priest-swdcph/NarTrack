@@ -74,6 +74,31 @@
     window.__shiftCountHistoryCache = Array.isArray(list) ? list : [];
   }
 
+  function getDrugStockCache() {
+    return readJsonCache("drug_stock_cache_for_shiftcount", []);
+  }
+
+  function setDrugStockCache(list) {
+    writeJsonCache("drug_stock_cache_for_shiftcount", list);
+    window.__shiftCountStockCache = Array.isArray(list) ? list : [];
+  }
+
+  // คำนวณยอดคงเหลือจริงในระบบต่อรายการยา (DrugID) จากข้อมูล Drug_Stock
+  // ยอดคงเหลือจริง = ผลรวม QtyRemain ของทุก LOT ของยานั้น ซึ่งฝั่ง Backend
+  // จะอัปเดตค่า QtyRemain ให้เท่ากับ (ยอดรับเข้า - ยอดตัดจ่ายสะสม) อยู่แล้วทุกครั้งที่มีการตัดจ่าย (ดู disburseDrug ใน API.gs)
+  function computeExpectedRemainByDrugID(stockList) {
+    const map = new Map();
+    const rows = Array.isArray(stockList) ? stockList : [];
+    rows.forEach(item => {
+      const drugId = String(item.DrugID || "");
+      if (!drugId) return;
+      const remain = parseFloat(item.QtyRemain);
+      const current = map.get(drugId) || 0;
+      map.set(drugId, current + (Number.isFinite(remain) ? remain : 0));
+    });
+    return map;
+  }
+
   function setInlineLoadingState(targetId, show, message) {
     if (targetId === "shift-batch-loading") {
       window.__shiftCountLoadingState = !!show;
@@ -1279,6 +1304,7 @@
     const statusCell = row.querySelector(".count-status-cell");
     const actionBtn = row.querySelector(".row-save-btn");
     const target = parseFloat(row.dataset.target || "0");
+    const expectedRemain = parseFloat(row.dataset.expectedRemain || "0");
     const unit = row.dataset.unit || "หน่วย";
     const ampValue = ampInput ? ampInput.value : "";
     const emptyValue = emptyInput ? emptyInput.value : "";
@@ -1287,10 +1313,15 @@
     const emptyAmp = filled ? parseFloat(emptyValue) : 0;
     const total = filled ? ampRemain + emptyAmp : null;
     const diff = filled ? total - target : null;
+    // ต้องตรวจสอบว่ายอด "แอมป์ดี (พร้อมใช้)" ที่กรอก ตรงกับยอดคงเหลือจริงในระบบ
+    // (ยอดรับเข้า - ยอดตัดจ่ายสะสม ของยารายการนั้น) เสมอ ไม่เช่นนั้นถือว่าไม่ผ่าน
+    const ampMatchesSystem = filled ? ampRemain === expectedRemain : null;
+    const passed = filled && ampMatchesSystem && diff === 0;
 
     row.dataset.completed = filled ? "1" : "0";
-    row.dataset.match = filled && diff === 0 ? "1" : "0";
+    row.dataset.match = passed ? "1" : "0";
     row.dataset.difference = filled ? String(diff) : "";
+    row.dataset.ampMismatch = filled && !ampMatchesSystem ? "1" : "0";
 
     if (statusCell) {
       statusCell.innerHTML = filled
@@ -1305,6 +1336,8 @@
     if (resultCell) {
       if (!filled) {
         resultCell.innerHTML = '<span class="text-muted">-</span>';
+      } else if (!ampMatchesSystem) {
+        resultCell.innerHTML = '<span class="text-danger fw-semibold">✕ ยอดพร้อมใช้ไม่ถูกต้อง</span>';
       } else if (diff === 0) {
         resultCell.innerHTML = '<span class="text-success fw-semibold">✓ ครบถ้วน</span>';
       } else if (diff < 0) {
@@ -1315,7 +1348,8 @@
     }
 
     if (actionBtn) {
-      actionBtn.disabled = !filled;
+      // ล็อกปุ่มบันทึกไว้เมื่อยอดแอมป์ดีที่กรอกไม่ตรงกับยอดคงเหลือจริงในระบบ
+      actionBtn.disabled = !filled || !ampMatchesSystem;
       actionBtn.innerHTML = row.dataset.saved === "1"
         ? '<i class="fas fa-pen-to-square me-1"></i>แก้ไข'
         : '<i class="fas fa-floppy-disk me-1"></i>บันทึก';
@@ -1324,7 +1358,7 @@
     row.classList.remove("table-success", "table-danger", "table-warning");
     if (!filled) {
       row.classList.add("table-warning");
-    } else if (diff === 0) {
+    } else if (passed) {
       row.classList.add("table-success");
     } else {
       row.classList.add("table-danger");
@@ -1469,13 +1503,15 @@
     });
   };
 
-  window.renderShiftBatchTable = function (masterList, historyList, selectedDate, selectedShift) {
+  window.renderShiftBatchTable = function (masterList, historyList, selectedDate, selectedShift, stockList) {
     const tbody = document.getElementById("shift-batch-tbody");
     if (!tbody) return;
 
     tbody.closest("table")?.classList.add("stack-table-mobile");
     const masterRows = Array.isArray(masterList) ? masterList : [];
     const historyRows = Array.isArray(historyList) ? historyList : [];
+    const stockRows = Array.isArray(stockList) ? stockList : (window.__shiftCountStockCache || getDrugStockCache());
+    const expectedRemainMap = computeExpectedRemainByDrugID(stockRows);
     const map = new Map();
     historyRows.forEach(item => {
       if (getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")) {
@@ -1494,35 +1530,44 @@
       const ampRemain = saved ? saved.AmpRemain ?? "" : "";
       const emptyAmp = saved ? saved.EmptyAmp ?? "" : "";
       const target = Number(item.StockWard || 0);
+      const drugId = String(item.DrugID || "");
+      const expectedRemain = expectedRemainMap.has(drugId) ? expectedRemainMap.get(drugId) : 0;
       const hasSaved = !!saved;
       const unit = item.Unit || "หน่วย";
-      const total = isValidNumber(ampRemain) && isValidNumber(emptyAmp) ? Number(ampRemain) + Number(emptyAmp) : null;
+      const filled = isValidNumber(ampRemain) && isValidNumber(emptyAmp);
+      const total = filled ? Number(ampRemain) + Number(emptyAmp) : null;
       const diff = total === null ? null : total - target;
+      const ampMatchesSystem = filled ? Number(ampRemain) === expectedRemain : null;
       const statusHtml = hasSaved
         ? '<span class="badge bg-success-subtle text-success px-2 py-1">● ตรวจแล้ว</span>'
         : '<span class="badge bg-danger-subtle text-danger px-2 py-1">● ยังไม่นับ</span>';
       const resultHtml = total === null
         ? '<span class="text-muted">-</span>'
-        : diff === 0
-          ? '<span class="text-success fw-semibold">✓ ครบถ้วน</span>'
-          : diff < 0
-            ? `<span class="text-danger fw-semibold">✗ ยาขาด ${Math.abs(diff)} ${escapeHtml(unit)}</span>`
-            : `<span class="text-danger fw-semibold">✗ ยาเกิน ${diff} ${escapeHtml(unit)}</span>`;
+        : !ampMatchesSystem
+          ? '<span class="text-danger fw-semibold">✕ ยอดพร้อมใช้ไม่ถูกต้อง</span>'
+          : diff === 0
+            ? '<span class="text-success fw-semibold">✓ ครบถ้วน</span>'
+            : diff < 0
+              ? `<span class="text-danger fw-semibold">✗ ยาขาด ${Math.abs(diff)} ${escapeHtml(unit)}</span>`
+              : `<span class="text-danger fw-semibold">✗ ยาเกิน ${diff} ${escapeHtml(unit)}</span>`;
 
       return `
-        <tr data-drug-id="${escapeHtml(item.DrugID || "")}" data-target="${escapeHtml(target)}" data-unit="${escapeHtml(unit)}" data-saved="${hasSaved ? "1" : "0"}">
+        <tr data-drug-id="${escapeHtml(item.DrugID || "")}" data-target="${escapeHtml(target)}" data-unit="${escapeHtml(unit)}" data-saved="${hasSaved ? "1" : "0"}" data-expected-remain="${escapeHtml(expectedRemain)}">
           <td data-label="สถานะ" class="count-status-cell">${statusHtml}</td>
           <td data-label="ชื่อยา">
             <div class="fw-semibold">${escapeHtml(item.DrugName || "-")}</div>
             <small class="text-muted">${escapeHtml(item.Strength || "")}</small>
           </td>
           <td data-label="ยอดเป้าหมาย Stock" class="text-center fw-bold">${escapeHtml(target)}</td>
-          <td data-label="แอมป์ดี (พร้อมใช้)" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm amp-remain-input" value="${escapeHtml(ampRemain)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์ดี แถว ${index + 1}"></td>
+          <td data-label="แอมป์ดี (พร้อมใช้)" style="min-width: 120px;">
+            <input type="number" min="0" step="1" class="form-control form-control-sm amp-remain-input" value="${escapeHtml(ampRemain)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์ดี แถว ${index + 1}">
+            <div class="form-text small mb-0">ยอดคงเหลือในระบบ: <span class="fw-semibold">${escapeHtml(expectedRemain)}</span> ${escapeHtml(unit)}</div>
+          </td>
           <td data-label="แอมป์เปล่า" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm empty-amp-input" value="${escapeHtml(emptyAmp)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์เปล่า แถว ${index + 1}"></td>
           <td data-label="ยอดรวมที่นับได้" class="count-total-cell text-center fw-bold">${total === null ? "-" : escapeHtml(total)}</td>
           <td data-label="ผลตรวจสอบ" class="count-result-cell text-center">${resultHtml}</td>
           <td data-label="Action" class="text-center">
-            <button type="button" class="btn btn-primary-custom btn-sm row-save-btn" tabindex="-1">
+            <button type="button" class="btn btn-primary-custom btn-sm row-save-btn" tabindex="-1" ${filled && !ampMatchesSystem ? "disabled" : ""}>
               <i class="fas fa-floppy-disk me-1"></i>${hasSaved ? "แก้ไข" : "บันทึก"}
             </button>
           </td>
@@ -1580,6 +1625,10 @@
           Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบก่อนบันทึกแถวนี้", "warning");
           return;
         }
+        if (row.dataset.ampMismatch === "1") {
+          Swal.fire("แจ้งเตือน", "ยอดแอมป์ดี (พร้อมใช้) ไม่ตรงกับยอดคงเหลือจริงในระบบ กรุณาตรวจสอบก่อนบันทึก", "warning");
+          return;
+        }
         saveShiftBatchRows([row]);
       });
     }
@@ -1600,9 +1649,10 @@
     setInlineLoadingState("shift-batch-loading", true, "โปรดรอสักครู่ ระบบกำลังอัปเดตข้อมูลล่าสุด");
     const cachedMaster = Array.isArray(window.__shiftCountMasterCache) && window.__shiftCountMasterCache.length ? window.__shiftCountMasterCache : getDrugMasterCache();
     const cachedHistory = Array.isArray(window.__shiftCountHistoryCache) && window.__shiftCountHistoryCache.length ? window.__shiftCountHistoryCache : getShiftCountHistoryCache();
+    const cachedStock = Array.isArray(window.__shiftCountStockCache) && window.__shiftCountStockCache.length ? window.__shiftCountStockCache : getDrugStockCache();
 
     if (cachedMaster.length || cachedHistory.length) {
-      window.renderShiftBatchTable(cachedMaster, cachedHistory, selectedDate, selectedShift);
+      window.renderShiftBatchTable(cachedMaster, cachedHistory, selectedDate, selectedShift, cachedStock);
       window.renderShiftCountTable(cachedHistory.filter(item => getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")));
     } else {
       const batchTbody = document.getElementById("shift-batch-tbody");
@@ -1611,15 +1661,18 @@
       renderEmptyRow(historyTbody, 8, "กำลังโหลดประวัติการตรวจนับ...");
     }
 
-    const [masterRes, historyRes] = await Promise.allSettled([
+    const [masterRes, historyRes, stockRes] = await Promise.allSettled([
       GASApi.getDrugMaster(),
-      GASApi.getShiftCountHistory()
+      GASApi.getShiftCountHistory(),
+      GASApi.getDrugStock()
     ]);
 
     const masterOk = masterRes.status === "fulfilled" && masterRes.value && masterRes.value.success;
     const historyOk = historyRes.status === "fulfilled" && historyRes.value && historyRes.value.success;
+    const stockOk = stockRes.status === "fulfilled" && stockRes.value && stockRes.value.success;
     const masterRows = masterOk ? (masterRes.value.data || []) : cachedMaster;
     const historyRows = historyOk ? (historyRes.value.data || []) : cachedHistory;
+    const stockRows = stockOk ? (stockRes.value.data || []) : cachedStock;
 
     if (masterOk) {
       setDrugMasterCache(masterRows);
@@ -1627,10 +1680,14 @@
     if (historyOk) {
       setShiftCountHistoryCache(historyRows);
     }
+    if (stockOk) {
+      setDrugStockCache(stockRows);
+    }
 
     window.__shiftCountMasterCache = Array.isArray(masterRows) ? masterRows : [];
     window.__shiftCountHistoryCache = Array.isArray(historyRows) ? historyRows : [];
-    window.renderShiftBatchTable(window.__shiftCountMasterCache, window.__shiftCountHistoryCache, selectedDate, selectedShift);
+    window.__shiftCountStockCache = Array.isArray(stockRows) ? stockRows : [];
+    window.renderShiftBatchTable(window.__shiftCountMasterCache, window.__shiftCountHistoryCache, selectedDate, selectedShift, window.__shiftCountStockCache);
     window.renderShiftCountTable(window.__shiftCountHistoryCache.filter(item => getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")));
     setInlineLoadingState("shift-batch-loading", false);
   }
@@ -1684,7 +1741,11 @@
           return;
         }
         if (mismatchRows.length > 0) {
-          Swal.fire("แจ้งเตือน", "ยังมีรายการที่ผลตรวจไม่ตรงกับยอดเป้าหมาย", "warning");
+          const ampMismatchRows = mismatchRows.filter(row => row.dataset.ampMismatch === "1");
+          const message = ampMismatchRows.length > 0
+            ? "พบรายการที่ยอดแอมป์ดี (พร้อมใช้) ไม่ตรงกับยอดคงเหลือจริงในระบบ กรุณาตรวจสอบก่อนส่งยอด"
+            : "ยังมีรายการที่ผลตรวจไม่ตรงกับยอดเป้าหมาย";
+          Swal.fire("แจ้งเตือน", message, "warning");
           return;
         }
         await saveShiftBatchRows(rows);
