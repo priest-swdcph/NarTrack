@@ -79,6 +79,22 @@ h1, h2, h3, h4, h5, h6 {
   gap: 0.25rem;
 }
 
+.navbar-brand-wrap {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+}
+
+.nav-menu-list {
+  width: 100%;
+}
+
 /* Sidebar behavior on large screens */
 @media (min-width: 992px) {
   .navbar-custom {
@@ -135,14 +151,14 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0.75rem 1rem !important;
   }
 
-  .navbar-custom .d-flex {
+  .navbar-custom .navbar-actions {
     width: 100%;
     margin-top: auto; /* Push configuration to bottom */
     padding-top: 1.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.15);
   }
 
-  .navbar-custom .d-flex button {
+  .navbar-custom .navbar-actions button {
     width: 100%;
     justify-content: center;
   }
@@ -428,6 +444,11 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0.75rem;
   }
 
+  .navbar-actions {
+    width: 100%;
+    margin-top: 0.75rem;
+  }
+
   .navbar-custom .nav-link {
     margin-bottom: 0.25rem;
   }
@@ -445,6 +466,10 @@ h1, h2, h3, h4, h5, h6 {
   .navbar-custom .navbar-brand {
     font-size: 1rem;
     line-height: 1.2;
+  }
+
+  .navbar-brand-wrap {
+    gap: 0.5rem;
   }
 
   .app-brand-logo {
