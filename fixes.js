@@ -1920,7 +1920,7 @@
 
     if (cachedMaster.length || cachedHistory.length) {
       window.renderShiftBatchTable(cachedMaster, cachedHistory, selectedDate, selectedShift, cachedStock);
-      window.renderShiftCountTable(cachedHistory.filter(item => getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")));
+      window.renderShiftCountTable(cachedHistory);
     } else {
       const batchTbody = document.getElementById("shift-batch-tbody");
       const historyTbody = document.getElementById("shift-history-tbody");
@@ -1955,7 +1955,7 @@
     window.__shiftCountHistoryCache = Array.isArray(historyRows) ? historyRows : [];
     window.__shiftCountStockCache = Array.isArray(stockRows) ? stockRows : [];
     window.renderShiftBatchTable(window.__shiftCountMasterCache, window.__shiftCountHistoryCache, selectedDate, selectedShift, window.__shiftCountStockCache);
-    window.renderShiftCountTable(window.__shiftCountHistoryCache.filter(item => getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")));
+    window.renderShiftCountTable(window.__shiftCountHistoryCache);
     setInlineLoadingState("shift-batch-loading", false);
   }
 
