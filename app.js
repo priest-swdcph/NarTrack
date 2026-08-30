@@ -172,7 +172,7 @@ function initLoginPage() {
       
       Swal.fire({
         title: 'สร้างฐานข้อมูลใหม่?',
-        text: 'ระบบจะเข้าไปสร้างชีตที่จำเป็นใน Spreadsheet และตั้งค่าเริ่มต้นให้คุณโ [...]',
+        text: 'ระบบจะเข้าไปสร้างชีตที่จำเป็นใน Spreadsheet และตั้งค่าเริ่มต้นให้คุณโ�[...]',
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'ตกลง, ดำเนินการ',
