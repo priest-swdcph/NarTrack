@@ -226,34 +226,44 @@
     const userRole = user.role || "พยาบาลประจำการ";
 
     placeholder.innerHTML = `
-      <nav class="navbar navbar-expand-lg navbar-dark bg-primary-custom shadow-sm mb-4">
-        <div class="container-fluid px-4">
-          <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
-            <img src="icon-app.png" alt="Logo" width="36" height="36" class="d-inline-block align-text-top me-2 rounded">
-            <span>Narcotics Ward Control</span>
+      <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="dashboard.html">
+            <div class="navbar-brand-wrap">
+              <img src="icon-app.png" alt="Logo" width="42" height="42" class="rounded shadow-sm">
+              <div class="navbar-brand-text">
+                <div class="brand-title">ระบบยาเสพติด</div>
+                <small class="brand-subtitle">งานบริหารเวชภัณฑ์ควบคุม</small>
+              </div>
+            </div>
+            <div class="ward-context-pill">
+              <i class="fas fa-hospital-user text-info"></i>
+              <div class="ward-context-pill__name">หอสงฆ์อาพาธ</div>
+            </div>
           </a>
-          <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="navbarContent">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-              <li class="nav-item"><a class="nav-link" id="nav-dashboard" href="dashboard.html"><i class="fas fa-chart-line me-1"></i>แดชบอร์ด</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-stock" href="stock.html"><i class="fas fa-boxes-stacked me-1"></i>รับเข้าสต็อก</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-shiftcount" href="shiftcount.html"><i class="fas fa-clipboard-check me-1"></i>ตรวจนับยา</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-disbursement" href="disbursement.html"><i class="fas fa-file-medical me-1"></i>ตัดจ่ายยา</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-report" href="report.html"><i class="fas fa-file-invoice me-1"></i>รายงาน</a></li>
-              <li class="nav-item"><a class="nav-link" id="nav-settings" href="settings.html"><i class="fas fa-gear me-1"></i>ตั้งค่ารายการยา</a></li>
+            <ul class="navbar-nav nav-menu-list my-2">
+              <li class="nav-item"><a class="nav-link" id="nav-dashboard" href="dashboard.html"><i class="fas fa-chart-line"></i><span>แดชบอร์ด</span></a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-shiftcount" href="shiftcount.html"><i class="fas fa-clipboard-check"></i><span>ตรวจนับยา</span></a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-stock" href="stock.html"><i class="fas fa-boxes-stacked"></i><span>รับเข้าสต็อก</span></a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-disbursement" href="disbursement.html"><i class="fas fa-file-medical"></i><span>ตัดจ่ายยา</span></a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-report" href="report.html"><i class="fas fa-file-invoice"></i><span>รายงาน</span></a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-settings" href="settings.html"><i class="fas fa-gear"></i><span>ตั้งค่ารายการยา</span></a></li>
             </ul>
-            <div class="d-flex align-items-center text-white gap-3">
-              <div class="d-flex align-items-center">
-                <i class="fas fa-user-circle fs-4 me-2"></i>
-                <div class="lh-sm">
-                  <div class="fw-semibold small">${escapeHtml(userName)}</div>
-                  <div class="text-white-50" style="font-size: 0.75rem;">${escapeHtml(userRole)}</div>
+            <div class="navbar-actions">
+              <div class="user-profile-badge">
+                <i class="fas fa-user-circle fs-3 text-info flex-shrink-0"></i>
+                <div class="user-text">
+                  <div class="user-name">${escapeHtml(userName)}</div>
+                  <div class="user-role">${escapeHtml(userRole)}</div>
                 </div>
               </div>
-              <button class="btn btn-outline-light btn-sm rounded-pill px-3" id="btn-logout">
-                <i class="fas fa-right-from-bracket me-1"></i>ออก
+              <button class="btn btn-outline-light btn-sm" id="btn-logout">
+                <i class="fas fa-right-from-bracket"></i>
+                <span>ออกจากระบบ</span>
               </button>
             </div>
           </div>
@@ -395,7 +405,7 @@
       disburseDateInput.value = new Date().toISOString().slice(0, 10);
     }
     if (disburseUserInput) {
-      disburseUserInput.value = disburseUserInput.value || "เจ้าหน้าที่เวร";
+      disburseUserInput.value = disburseUserInput.value || "";
     }
     if (stockSelect && remainHint && !stockSelect.dataset.bound) {
       stockSelect.dataset.bound = "1";
@@ -431,8 +441,13 @@
           Swal.fire("แจ้งเตือน", "กรุณาระบุวันที่ตัดจ่าย", "warning");
           return;
         }
-        if (!patientName || !hn || !user) {
-          Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลผู้ป่วยและผู้จ่ายยาให้ครบถ้วน", "warning");
+        if (!patientName || !hn) {
+          Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลผู้ป่วย (ชื่อ-นามสกุล และ HN) ให้ครบถ้วน", "warning");
+          return;
+        }
+        if (!user) {
+          Swal.fire("แจ้งเตือน", "กรุณากรอกชื่อผู้จ่ายยา (พยาบาล) ก่อนทำรายการ", "warning");
+          document.getElementById("disburse-user-input")?.focus();
           return;
         }
         if (!qty || qty <= 0) {
@@ -474,7 +489,7 @@
             }).then(() => {
               disburseForm.reset();
               if (disburseDateInput) disburseDateInput.value = new Date().toISOString().slice(0, 10);
-              if (disburseUserInput) disburseUserInput.value = "เจ้าหน้าที่เวร";
+              if (disburseUserInput) disburseUserInput.value = "";
               if (remainHint) remainHint.innerText = "คงเหลือในระบบ: - แอมป์/ขวด";
               window.initDisbursementPage();
             });
@@ -507,6 +522,12 @@
       return;
     }
 
+    const masterList = getDrugMasterCache();
+    const strengthMap = new Map();
+    masterList.forEach(m => {
+      if (m.DrugID) strengthMap.set(String(m.DrugID), m.Strength || "");
+    });
+
     tbody.innerHTML = cleanHtmlMarkup(rows.map(item => {
       const remain = parseFloat(item.QtyRemain || 0);
       const expiryDate = item.ExpiryDate ? new Date(item.ExpiryDate) : null;
@@ -525,17 +546,25 @@
         }
       }
 
+      const drugId = String(item.DrugID || "");
+      const strength = strengthMap.get(drugId) || item.Strength || "";
+      const baseName = item.DrugName || "-";
+      let displayName = baseName;
+      if (strength && !baseName.includes(strength)) {
+        displayName = baseName + " (" + strength + ")";
+      }
+
       return `
         <tr>
           <td data-label="รหัสสต็อก"><span class="fw-semibold text-primary">${escapeHtml(item.StockID || "-")}</span></td>
-          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
+          <td data-label="ชื่อยา"><span class="fw-bold">${escapeHtml(displayName)}</span></td>
           <td data-label="LOT"><span class="badge bg-secondary">${escapeHtml(item.LOT || "-")}</span></td>
           <td data-label="วันหมดอายุ">${escapeHtml(formatShortDate(item.ExpiryDate))}</td>
-          <td data-label="รับเข้า">${escapeHtml(item.QtyReceive ?? 0)}</td>
-          <td data-label="คงเหลือ" class="fw-bold">${escapeHtml(item.QtyRemain ?? 0)}</td>
+          <td data-label="รับเข้า" class="text-end">${escapeHtml(item.QtyReceive ?? 0)}</td>
+          <td data-label="คงเหลือ" class="text-end fw-bold text-primary">${escapeHtml(item.QtyRemain ?? 0)}</td>
           <td data-label="วันที่รับเข้า">${escapeHtml(formatShortDate(item.ReceiveDate))}</td>
           <td data-label="ผู้บันทึก">${escapeHtml(item.CreatedBy || "-")}</td>
-          <td data-label="สถานะ">${statusBadge}</td>
+          <td data-label="สถานะ" class="text-center">${statusBadge}</td>
         </tr>
       `;
     }).join(""));
@@ -600,8 +629,13 @@
         const receiveDate = document.getElementById("receive-date-input")?.value;
         const createdBy = (document.getElementById("created-by-input")?.value || "").trim();
 
-        if (!drugId || !lot || !expiryDate || !receiveDate || !createdBy) {
-          Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบถ้วน", "warning");
+        if (!drugId || !lot || !expiryDate || !receiveDate) {
+          Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลการรับเข้ายาและล็อตให้ครบถ้วน", "warning");
+          return;
+        }
+        if (!createdBy) {
+          Swal.fire("แจ้งเตือน", "กรุณากรอกชื่อผู้บันทึกรับเข้ายาก่อนทำรายการ", "warning");
+          document.getElementById("created-by-input")?.focus();
           return;
         }
         if (!qty || qty <= 0) {
@@ -633,7 +667,7 @@
               receiveForm.reset();
               if (receiveDateInput) receiveDateInput.value = new Date().toISOString().slice(0, 10);
               const defaultUser = document.getElementById("created-by-input");
-              if (defaultUser) defaultUser.value = "เจ้าหน้าที่เวร";
+              if (defaultUser) defaultUser.value = "";
               window.initStockPage();
             });
           } else {
@@ -1296,7 +1330,7 @@
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       if (user && user.name) return user.name;
     } catch (err) {}
-    return "เจ้าหน้าที่เวร";
+    return "";
   }
 
   function isValidNumber(value) {
@@ -1425,7 +1459,7 @@
   function getShiftBatchPayload(reasonsMap) {
     const selectedDate = document.getElementById("count-date-input")?.value || getBangkokDateString(new Date());
     const selectedShift = getSelectedShiftValue();
-    const user = (document.getElementById("count-user-input")?.value || "").trim() || getCurrentUserName();
+    const user = (document.getElementById("count-user-input")?.value || "").trim();
     const rows = getShiftBatchTableRows();
 
     return {
@@ -1577,27 +1611,28 @@
 
       return `
         <tr data-drug-id="${escapeHtml(item.DrugID || "")}" data-target="${escapeHtml(target)}" data-unit="${escapeHtml(unit)}" data-saved="${hasSaved ? "1" : "0"}" data-expected-remain="${escapeHtml(expectedRemain)}">
-          <td data-label="สถานะ" class="count-status-cell">${statusHtml}</td>
-          <td data-label="ชื่อยา">
-            <div class="fw-semibold">${escapeHtml(item.DrugName || "-")}</div>
-            <small class="text-muted">${escapeHtml(item.Strength || "")}</small>
+          <td data-label="สถานะ" class="count-status-cell text-center">${statusHtml}</td>
+          <td data-label="ชื่อยา" class="text-start">
+            <div class="fw-bold text-dark" style="font-size: 0.9rem;">${escapeHtml(item.DrugName || "-")}</div>
+            <small class="text-muted" style="font-size: 0.78rem;">${escapeHtml(item.Strength || "")}</small>
           </td>
-          <td data-label="ยอดเป้าหมาย Stock" class="text-center fw-bold">${escapeHtml(target)}</td>
-          <td data-label="แอมป์ดี (พร้อมใช้)" style="min-width: 120px;">
-            <input type="number" min="0" step="1" class="form-control form-control-sm amp-remain-input" value="${escapeHtml(ampRemain)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์ดี แถว ${index + 1}">
-            <div class="form-text small mb-0">ยอดคงเหลือในระบบ: <span class="fw-semibold">${escapeHtml(expectedRemain)}</span> ${escapeHtml(unit)}</div>
+          <td data-label="Stock Ward" class="text-center fw-bold text-primary" style="font-size: 0.95rem;">${escapeHtml(target)}</td>
+          <td data-label="แอมป์ดี (พร้อมใช้)" class="text-center" style="width: 135px;">
+            <input type="number" min="0" step="1" class="form-control form-control-sm amp-remain-input text-center fw-bold mx-auto py-1 px-2" style="max-width: 85px;" value="${escapeHtml(ampRemain)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์ดี แถว ${index + 1}">
+            <div class="small text-muted text-nowrap mt-1" style="font-size: 0.73rem;">คงเหลือ: <b class="text-dark">${escapeHtml(expectedRemain)}</b> ${escapeHtml(unit)}</div>
           </td>
-          <td data-label="แอมป์เปล่า" style="min-width: 120px;"><input type="number" min="0" step="1" class="form-control form-control-sm empty-amp-input" value="${escapeHtml(emptyAmp)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์เปล่า แถว ${index + 1}"></td>
-          <td data-label="ยอดรวมที่นับได้" class="count-total-cell text-center fw-bold">${total === null ? "-" : escapeHtml(total)}</td>
-          <td data-label="ผลตรวจสอบ" class="count-result-cell text-center">${resultHtml}</td>
+          <td data-label="แอมป์เปล่า" class="text-center" style="width: 110px;">
+            <input type="number" min="0" step="1" class="form-control form-control-sm empty-amp-input text-center fw-bold mx-auto py-1 px-2" style="max-width: 85px;" value="${escapeHtml(emptyAmp)}" data-row-index="${index}" inputmode="numeric" aria-label="แอมป์เปล่า แถว ${index + 1}">
+          </td>
+          <td data-label="ยอดรวม" class="count-total-cell text-center fw-bold" style="font-size: 0.95rem;">${total === null ? "-" : escapeHtml(total)}</td>
+          <td data-label="ผลตรวจสอบ" class="count-result-cell text-center" style="font-size: 0.82rem;">${resultHtml}</td>
           <td data-label="Action" class="text-center">
-            <button type="button" class="btn btn-primary-custom btn-sm row-save-btn" tabindex="-1" ${!filled ? "disabled" : ""}>
+            <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2 row-save-btn" style="font-size: 0.78rem;" tabindex="-1" ${!filled ? "disabled" : ""}>
               <i class="fas fa-floppy-disk me-1"></i>${hasSaved ? "แก้ไข" : "บันทึก"}
             </button>
           </td>
         </tr>
-      `;
-    }).join(""));
+      `;    }).join(""));
 
     if (!tbody.dataset.bound) {
       tbody.dataset.bound = "1";
@@ -1645,6 +1680,13 @@
         if (!button) return;
         const row = button.closest("tr[data-drug-id]");
         if (!row) return;
+        const user = (document.getElementById("count-user-input")?.value || "").trim();
+        if (!user) {
+          Swal.fire("แจ้งเตือน", "กรุณากรอกชื่อผู้ตรวจนับก่อนบันทึกข้อมูล", "warning");
+          document.getElementById("count-user-input")?.focus();
+          return;
+        }
+
         if (row.dataset.completed !== "1") {
           Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบก่อนบันทึกแถวนี้", "warning");
           return;
@@ -1756,7 +1798,7 @@
 
     const countUserInput = document.getElementById("count-user-input");
     if (countUserInput) {
-      countUserInput.value = countUserInput.value || getCurrentUserName();
+      countUserInput.value = countUserInput.value || "";
     }
 
     const autoShift = getCurrentBangkokShift();
@@ -1777,6 +1819,13 @@
     if (saveBtn && !saveBtn.dataset.bound) {
       saveBtn.dataset.bound = "1";
       saveBtn.addEventListener("click", async function () {
+        const user = (document.getElementById("count-user-input")?.value || "").trim();
+        if (!user) {
+          Swal.fire("แจ้งเตือน", "กรุณากรอกชื่อผู้ตรวจนับก่อนบันทึกข้อมูล", "warning");
+          document.getElementById("count-user-input")?.focus();
+          return;
+        }
+
         const rows = getShiftBatchTableRows();
         const completedRows = rows.filter(row => row.dataset.completed === "1");
         const mismatchRows = rows.filter(row => row.dataset.completed === "1" && row.dataset.match !== "1");
