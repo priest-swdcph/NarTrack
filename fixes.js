@@ -1696,6 +1696,20 @@
     }
   }
 
+  function getHistorySortTimestamp(item) {
+    const raw = (item && (item.Timestamp || item.Date)) || null;
+    const t = raw ? new Date(raw).getTime() : NaN;
+    return Number.isNaN(t) ? 0 : t;
+  }
+
+  function getHistoryTimeDisplay(item) {
+    const raw = item && item.Timestamp;
+    if (!raw) return "";
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  }
+
   window.renderShiftCountTable = function (historyList) {
     const tbody = document.getElementById("shift-history-tbody");
     if (!tbody) return;
@@ -1712,12 +1726,16 @@
       return;
     }
 
-    tbody.innerHTML = cleanHtmlMarkup(rows.map(item => {
+    const sortedRows = rows.slice().sort((a, b) => getHistorySortTimestamp(b) - getHistorySortTimestamp(a));
+
+    tbody.innerHTML = cleanHtmlMarkup(sortedRows.map(item => {
       const isCorrect = String(item.Result || "") === "ถูกต้อง";
       const noteBadge = item.Note ? '<div class="text-danger small mt-1"><i class="fas fa-comment-dots me-1"></i>' + escapeHtml(item.Note) + '</div>' : '';
+      const sortTs = getHistorySortTimestamp(item);
+      const timeDisplay = getHistoryTimeDisplay(item);
       return `
         <tr>
-          <td data-label="วันที่">${escapeHtml(formatShortDate(item.Date))}</td>
+          <td data-label="วันที่" data-order="${sortTs}">${escapeHtml(formatShortDate(item.Date))}${timeDisplay ? '<div class="small text-muted">' + escapeHtml(timeDisplay) + '</div>' : ''}</td>
           <td data-label="เวร"><span class="badge bg-primary">${escapeHtml(getShiftLabel(item.Shift))}</span></td>
           <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")} ${noteBadge}</td>
           <td data-label="แอมป์ดี" class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>
