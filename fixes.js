@@ -786,20 +786,22 @@
       drugNameSelect.addEventListener("change", syncReceiveDrugFieldsFromSelect);
     }
 
-    const receiveForm = document.getElementById("receive-form");
+    const receiveForm = document.getElementById("add-stock-form") || document.getElementById("receive-form");
     if (receiveForm && !receiveForm.dataset.bound) {
       receiveForm.dataset.bound = "1";
       receiveForm.addEventListener("submit", async function (e) {
         e.preventDefault();
 
-        const drugId = document.getElementById("drug-name-input")?.value || "";
-        const drugName = document.getElementById("drug-name-input")?.selectedOptions?.[0]?.dataset?.name || "";
+        const drugSelect = document.getElementById("drug-name-input");
+        const drugId = drugSelect?.value || "";
+        const drugName = drugSelect?.selectedOptions?.[0]?.dataset?.name ||
+                         (drugSelect?.selectedOptions?.[0]?.textContent || "").split("(")[0].trim() || "";
         const strength = document.getElementById("drug-strength-input")?.value || "";
         const unit = document.getElementById("drug-unit-input")?.value || "";
-        const lot = (document.getElementById("drug-lot-input")?.value || "").trim();
-        const expiryDate = document.getElementById("drug-exp-input")?.value;
-        const qty = parseFloat(document.getElementById("drug-qty-input")?.value || "0");
-        const receiveDate = document.getElementById("receive-date-input")?.value;
+        const lot = (document.getElementById("lot-input")?.value || document.getElementById("drug-lot-input")?.value || "").trim();
+        const expiryDate = document.getElementById("expiry-date-input")?.value || document.getElementById("drug-exp-input")?.value || "";
+        const qty = parseFloat(document.getElementById("qty-receive-input")?.value || document.getElementById("drug-qty-input")?.value || "0");
+        const receiveDate = document.getElementById("receive-date-input")?.value || "";
         const createdBy = (document.getElementById("created-by-input")?.value || "").trim();
 
         if (!drugId || !lot || !expiryDate || !receiveDate) {
@@ -832,6 +834,13 @@
           showLoading(false);
 
           if (response.success) {
+            const modalEl = document.getElementById("addStockModal");
+            if (modalEl) {
+              const modalInstance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+              if (modalInstance) {
+                modalInstance.hide();
+              }
+            }
             Swal.fire({
               icon: "success",
               title: "รับเข้ายาสำเร็จ",
